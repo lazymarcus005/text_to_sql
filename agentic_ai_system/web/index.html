@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Agentic Text-to-SQL</title>
+
+  <!-- Markdown renderer (lightweight) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Minimal White Theme (inline for 1-file setup) -->
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --text:#111827;
+      --accent:#111827;
+      --accent2:#2563eb;
+      --border:#e5e7eb;
+      --shadow: 0 8px 24px rgba(17,24,39,.08);
+      --radius:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: var(--bg);
+      color:var(--text);
+    }
+
+    .app{ max-width: 1200px; margin: 0 auto; padding: 18px; }
+
+    .header{
+      display:flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 8px 4px 18px 4px;
+    }
+    .brand{ font-weight: 900; font-size: 18px; letter-spacing: .2px; }
+    .sub{ color: var(--muted); font-size: 13px; }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+
+    /* Layout */
+    .layout{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .layout > *{ min-width: 0; } /* prevent long lines expanding grid items */
+    @media (max-width: 980px){
+      .layout{ grid-template-columns: 1fr; }
+    }
+
+    /* Chat */
+    .chat{ padding: 0; overflow: hidden; }
+    .chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .chatTitle{ font-weight: 900; }
+
+    .chip{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: #fff;
+      user-select:none;
+    }
+    .chip.busy{ color: #b45309; border-color: rgba(180,83,9,.25); background: #fff7ed; }
+    .chip.ok{ color: #047857; border-color: rgba(4,120,87,.25); background: #ecfdf5; }
+    .chip.err{ color: #b91c1c; border-color: rgba(185,28,28,.25); background: #fef2f2; }
+
+    .chatLog{
+      height: calc(100vh - 310px);
+      min-height: 420px;
+      overflow: auto;
+      padding: 14px 14px 0 14px;
+      background: linear-gradient(180deg, rgba(249,250,251,.35), rgba(255,255,255,0));
+    }
+
+    .msg{ display:flex; margin: 0 0 12px 0; }
+    .msg.user{ justify-content: flex-end; }
+    .msg.assistant{ justify-content: flex-start; }
+
+    .bubble{
+      max-width: 86%;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .msg.user .bubble{ background: #f9fafb; }
+
+    .meta{
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .traceLink{
+      color: var(--accent2);
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .traceLink:hover{ text-decoration: underline; }
+
+    .md{
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .md code{ font-family: var(--mono); font-size: 12px; }
+    .md pre{
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      overflow:auto;
+    }
+    .md table{
+      width: 100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+    .md th, .md td{
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      font-size: 12px;
+      vertical-align: top;
+    }
+    .md th{ background: #f9fafb; }
+
+    .composer{
+      padding: 14px 16px 16px 16px;
+      border-top: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .textarea{
+      width:100%;
+      resize:vertical;
+      min-height:60px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      padding:12px 12px;
+      background: #fff;
+      color:var(--text);
+      outline:none;
+      font-size:14px;
+    }
+    .textarea:focus{
+      border-color: rgba(37,99,235,.55);
+      box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .composerRow{
+      display:flex;
+      gap:10px;
+      margin-top: 10px;
+      align-items:center;
+      justify-content: flex-end;
+      position: relative; /* for dropdown positioning */
+    }
+
+    .btn{
+      background: var(--text);
+      border:none;
+      color:white;
+      font-weight:900;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    .btn:hover{ opacity:.92; }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .btn.ghost{
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight:800;
+    }
+
+    /* ===== Examples dropdown styles ===== */
+    .btn.small{ padding:10px 12px; }
+
+    .examplesWrap{
+      position: relative;
+      margin-right: auto; /* pushes Send/Clear to the right */
+    }
+
+    .examplesMenu{
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 10px);
+      width: min(520px, 78vw);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 8px;
+      display: none;
+      z-index: 50;
+    }
+
+    .examplesMenu.show{ display:block; }
+
+    .exHint{
+      padding: 6px 10px 10px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .exItem{
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 10px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .exItem:hover{
+      background: rgba(37,99,235,.08);
+      border-color: rgba(37,99,235,.18);
+    }
+
+    /* Evidence */
+    .evidence{
+      position: sticky;
+      top: 16px;
+      height: calc(100vh - 90px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .eviHeader{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eviTitle{ font-weight: 900; }
+    .eviRight{ display:flex; gap:10px; align-items:center; }
+    .smallLabel{ font-size:12px; color: var(--muted); }
+
+    .select{
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab{
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .tab.active{
+      background: rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.35);
+      color: #1d4ed8;
+    }
+
+    /* IMPORTANT: allow scrolling without pushing the card */
+    .tabBody{
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: 12px;
+    }
+    .pre{
+      font-family:var(--mono);
+      font-size:12.5px;
+      line-height:1.45;
+      background:#fafafa;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      overflow:auto;
+      margin:0;
+    }
+    #eviBox.pre{
+      height: 100%;
+      max-height: none;
+      overflow: auto;
+      white-space: pre; /* keeps SQL/JSON formatting */
+    }
+
+    .hint{
+      margin-top: auto;
+      padding: 10px 12px 14px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .footer{
+      padding: 14px 4px 0 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Thinking dots animation */
+    .bubble.thinking{ min-width: 92px; }
+    .dots{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      padding: 6px 2px 2px 2px;
+    }
+    .dots span{
+      width:7px;
+      height:7px;
+      border-radius:999px;
+      background: #9ca3af;
+      display:inline-block;
+      animation: bounce 1.05s infinite ease-in-out;
+    }
+    .dots span:nth-child(2){ animation-delay: .15s; }
+    .dots span:nth-child(3){ animation-delay: .30s; }
+
+    @keyframes bounce{
+      0%, 80%, 100% { transform: translateY(0); opacity:.55; }
+      40% { transform: translateY(-4px); opacity:1; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">Agentic Text-to-SQL</div>
+      <div class="sub">Gemini + LangChain + Postgres</div>
+    </header>
+
+    <main class="layout">
+      <!-- LEFT: CHAT -->
+      <section class="chat card">
+        <div class="chatHeader">
+          <div class="chatTitle">Chat</div>
+          <div class="chip" id="statusChip">Ready</div>
+        </div>
+
+        <div id="chatLog" class="chatLog">
+          <div class="msg assistant">
+            <div class="bubble">
+              <div class="md">
+                <p>สวัสดี 👋 พิมพ์คำถามด้านล่างได้เลย</p>
+                <p><em>ตัวอย่าง:</em> ยอดขายเดือนนี้แยกตามสาขา top 10</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <textarea id="prompt" class="textarea" rows="2"
+            placeholder="พิมพ์คำถามแล้วกด Enter (Shift+Enter ขึ้นบรรทัดใหม่)"></textarea>
+
+          <div class="composerRow">
+            <!-- Examples button + menu -->
+            <div class="examplesWrap">
+              <button id="examplesBtn" class="btn ghost small" type="button" onclick="toggleExamples()">
+                ตัวอย่างคำถาม
+              </button>
+
+              <div id="examplesMenu" class="examplesMenu" role="menu" aria-hidden="true">
+                <div class="exHint">เลือก 1 ข้อเพื่อใส่ลงกล่องพิมพ์</div>
+                <button class="exItem" type="button" onclick="pickExample(0)"></button>
+                <button class="exItem" type="button" onclick="pickExample(1)"></button>
+                <button class="exItem" type="button" onclick="pickExample(2)"></button>
+                <button class="exItem" type="button" onclick="pickExample(3)"></button>
+                <button class="exItem" type="button" onclick="pickExample(4)"></button>
+              </div>
+            </div>
+
+            <button id="sendBtn" class="btn" onclick="sendMessage()">Send</button>
+            <button class="btn ghost" onclick="clearChat()">Clear</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: EVIDENCE -->
+      <aside class="evidence card">
+        <div class="eviHeader">
+          <div class="eviTitle">Evidence</div>
+          <div class="eviRight">
+            <label class="smallLabel" for="traceSelect">trace_id</label>
+            <select id="traceSelect" class="select" onchange="renderEvidence(this.value)">
+              <option value="">(none)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="sql" onclick="switchTab('sql')">SQL</button>
+          <button class="tab" data-tab="params" onclick="switchTab('params')">Params</button>
+          <button class="tab" data-tab="result" onclick="switchTab('result')">Result</button>
+          <button class="tab" data-tab="raw" onclick="switchTab('raw')">Raw</button>
+        </div>
+
+        <div class="tabBody">
+          <pre id="eviBox" class="pre"></pre>
+        </div>
+
+        <div class="hint">
+          เลือก trace_id เพื่อดู SQL / params / result แยกจาก chat
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>Tip: ถ้า query ช้า ลองเพิ่มเงื่อนไขช่วงเวลา</span>
+    </footer>
+  </div>
+
+<script>
+/** In-memory store: trace_id -> payload */
+const traces = new Map();
+let activeTraceId = "";
+let activeTab = "sql";
+
+const chatLog = document.getElementById("chatLog");
+const promptEl = document.getElementById("prompt");
+const statusChip = document.getElementById("statusChip");
+const traceSelect = document.getElementById("traceSelect");
+const eviBox = document.getElementById("eviBox");
+
+function shortTrace(id){
+  if(!id) return "";
+  const s = String(id);
+  return s.length <= 8 ? s : s.slice(-8);
+}
+
+function setStatus(text, mode="ready"){
+  statusChip.textContent = text;
+  statusChip.classList.remove("ok","err","busy");
+  if(mode==="ok") statusChip.classList.add("ok");
+  if(mode==="err") statusChip.classList.add("err");
+  if(mode==="busy") statusChip.classList.add("busy");
+}
+
+function addThinking(){
+  const wrap = document.createElement("div");
+  wrap.className = "msg assistant";
+  wrap.id = "thinkingMsg";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble thinking";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = "Assistant";
+
+  const dots = document.createElement("div");
+  dots.className = "dots";
+  dots.innerHTML = "<span></span><span></span><span></span>";
+
+  bubble.appendChild(meta);
+  bubble.appendChild(dots);
+  wrap.appendChild(bubble);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function removeThinking(){
+  const el = document.getElementById("thinkingMsg");
+  if(el) el.remove();
+}
+
+function addMsg(role, content, traceId=null){
+  const wrap = document.createElement("div");
+  wrap.className = "msg " + role;
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  if(traceId){
+    const a = document.createElement("a");
+    a.href = "javascript:void(0)";
+    a.textContent = "trace: " + shortTrace(traceId);
+    a.className = "traceLink";
+    a.title = traceId; // hover shows full trace_id
+    a.onclick = () => {
+      traceSelect.value = traceId;
+      renderEvidence(traceId);
+      switchTab("sql");
+    };
+    meta.appendChild(a);
+  } else {
+    meta.textContent = (role === "user") ? "You" : "Assistant";
+  }
+
+  const md = document.createElement("div");
+  md.className = "md";
+
+  if(role === "assistant"){
+    md.innerHTML = window.marked ? marked.parse(content || "") : `<pre>${escapeHtml(content||"")}</pre>`;
+  } else {
+    md.textContent = content || "";
+  }
+
+  bubble.appendChild(meta);
+  bubble.appendChild(md);
+  wrap.appendChild(bubble);
+  chatLog.appendChild(wrap);
+
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function escapeHtml(s){
+  return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+async function sendMessage(){
+  const q = (promptEl.value || "").trim();
+  if(!q) return;
+
+  addMsg("user", q);
+  promptEl.value = "";
+  setStatus("Thinking...", "busy");
+  addThinking();
+
+  let res, rawText, data;
+  try{
+    res = await fetch("/query", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({user_prompt: q})
+    });
+
+    rawText = await res.text();
+    try { data = JSON.parse(rawText); }
+    catch(e){ data = { status:"fail", error:{message: rawText || "Non-JSON response"} }; }
+
+    if(!res.ok || data.status === "fail"){
+      removeThinking();
+      setStatus("Error", "err");
+      const msg = (data.error && data.error.message) ? data.error.message : "Request failed";
+      addMsg("assistant", `### Error\n- ${msg}`);
+
+      const tid = data.trace_id || ("err_" + Date.now());
+      storeTrace(tid, data, rawText);
+      return;
+    }
+
+    removeThinking();
+    setStatus("Done", "ok");
+
+    const tid = data.trace_id || ("t_" + Date.now());
+    storeTrace(tid, data, rawText);
+
+    const md = data.answer_markdown
+      || `### Result\n- ได้ผลลัพธ์แล้ว\n\n### Evidence\n**SQL**\n\`\`\`sql\n${data.sql||""}\n\`\`\``;
+
+    addMsg("assistant", md, tid);
+
+    traceSelect.value = tid;
+    renderEvidence(tid);
+
+  }catch(e){
+    removeThinking();
+    setStatus("Error", "err");
+    addMsg("assistant", `### Error\n- ${String(e)}`);
+  }
+}
+
+function storeTrace(traceId, data, rawText){
+  traces.set(traceId, {
+    trace_id: traceId,
+    sql: data.sql || "",
+    params: data.params || {},
+    result: data.result || {},
+    raw: rawText || JSON.stringify(data || {}, null, 2)
+  });
+
+  const exists = Array.from(traceSelect.options).some(o => o.value === traceId);
+  if(!exists){
+    const opt = document.createElement("option");
+    opt.value = traceId;
+    opt.textContent = shortTrace(traceId);
+    opt.title = traceId;
+    traceSelect.appendChild(opt);
+  }
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach(b=>{
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  if(traceSelect.value) renderEvidence(traceSelect.value);
+}
+
+function renderEvidence(traceId){
+  activeTraceId = traceId || "";
+  const t = traces.get(activeTraceId);
+  if(!t){
+    eviBox.textContent = "";
+    return;
+  }
+  if(activeTab === "sql"){
+    eviBox.textContent = t.sql || "";
+  } else if(activeTab === "params"){
+    eviBox.textContent = JSON.stringify(t.params || {}, null, 2);
+  } else if(activeTab === "result"){
+    eviBox.textContent = JSON.stringify(t.result || {}, null, 2);
+  } else if(activeTab === "raw"){
+    eviBox.textContent = (typeof t.raw === "string") ? t.raw : JSON.stringify(t.raw, null, 2);
+  }
+}
+
+function clearChat(){
+  chatLog.innerHTML = "";
+  addMsg("assistant", "พร้อมแล้ว พิมพ์คำถามได้เลย 👇");
+  setStatus("Ready","ready");
+}
+
+promptEl.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+/* ===== Examples (5 questions) ===== */
+const EXAMPLES = [
+  "ยอดขายเดือนนี้แยกตามสาขา (Top 10)",
+  "จำนวนคำสั่งซื้อวันนี้ แยกตามสาขา",
+  "ยอดขายรายวันใน 7 วันที่ผ่านมา",
+  "Top 5 สาขายอดขายสูงสุดใน 30 วันที่ผ่านมา",
+  "ยอดขายรวมของสาขาแต่ละสาขาในเดือนที่แล้ว"
+];
+
+const examplesMenu = document.getElementById("examplesMenu");
+const examplesBtn = document.getElementById("examplesBtn");
+
+// init: fill buttons text
+(function initExamples(){
+  if(!examplesMenu) return;
+  const items = examplesMenu.querySelectorAll(".exItem");
+  items.forEach((btn, i) => {
+    btn.textContent = EXAMPLES[i] || `Example ${i+1}`;
+  });
+})();
+
+function toggleExamples(){
+  if(!examplesMenu) return;
+  const willShow = !examplesMenu.classList.contains("show");
+  examplesMenu.classList.toggle("show", willShow);
+  examplesMenu.setAttribute("aria-hidden", String(!willShow));
+}
+
+function closeExamples(){
+  if(!examplesMenu) return;
+  examplesMenu.classList.remove("show");
+  examplesMenu.setAttribute("aria-hidden", "true");
+}
+
+function pickExample(i){
+  const q = EXAMPLES[i] || "";
+  promptEl.value = q;
+  promptEl.focus();
+  promptEl.setSelectionRange(promptEl.value.length, promptEl.value.length);
+  closeExamples();
+}
+
+// close on click outside
+document.addEventListener("click", (e)=>{
+  if(!examplesMenu || !examplesBtn) return;
+  const clickedInside = examplesMenu.contains(e.target) || examplesBtn.contains(e.target);
+  if(!clickedInside) closeExamples();
+});
+
+// close on ESC
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape") closeExamples();
+});
+</script>
+</body>
+</html>

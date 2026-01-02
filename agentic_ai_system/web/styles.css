@@ -1,0 +1,278 @@
+:root{
+  --bg:#0b0f19;
+  --card:#121a2b;
+  --muted:#9fb0d0;
+  --text:#e8eefc;
+  --accent:#7c5cff;
+  --accent2:#00d4ff;
+  --border:rgba(255,255,255,.08);
+  --shadow: 0 12px 30px rgba(0,0,0,.35);
+  --radius:16px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:var(--sans);
+  background: radial-gradient(1200px 600px at 10% 0%, rgba(124,92,255,.25), transparent 50%),
+              radial-gradient(900px 500px at 90% 10%, rgba(0,212,255,.18), transparent 55%),
+              var(--bg);
+  color:var(--text);
+}
+.app{max-width:1100px;margin:0 auto;padding:28px 18px 40px}
+.header{margin-bottom:18px}
+.brand{font-size:26px;font-weight:800;letter-spacing:.2px}
+.sub{color:var(--muted);margin-top:4px}
+.main{display:flex;flex-direction:column;gap:14px}
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px;
+}
+.cardTitle{font-weight:700;margin-bottom:10px;color:var(--text)}
+.label{display:block;font-weight:700;margin-bottom:8px;color:var(--text)}
+.textarea{
+  width:100%;
+  resize:vertical;
+  min-height:90px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  padding:12px 12px;
+  background: rgba(10,14,24,.65);
+  color:var(--text);
+  outline:none;
+  font-size:14px;
+}
+.textarea:focus{border-color:rgba(124,92,255,.6); box-shadow:0 0 0 3px rgba(124,92,255,.15)}
+.row{display:flex;gap:10px;align-items:center;margin-top:12px}
+.btn{
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border:none;
+  color:white;
+  font-weight:800;
+  padding:10px 14px;
+  border-radius:12px;
+  cursor:pointer;
+}
+.btn:disabled{opacity:.6; cursor:not-allowed}
+.btn.ghost{
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight:700;
+}
+.status{margin-left:auto;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+.pre{
+  font-family:var(--mono);
+  font-size:12.5px;
+  line-height:1.45;
+  background: rgba(10,14,24,.65);
+  border: 1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  overflow:auto;
+  max-height:340px;
+}
+.footer{margin-top:10px;color:var(--muted);font-size:12px;text-align:center}
+/* --- NEW LAYOUT: chat + evidence --- */
+.layout{
+  display:grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 980px){
+  .layout{ grid-template-columns: 1fr; }
+}
+
+.chat{ padding: 0; overflow: hidden; }
+.evidence{ position: sticky; top: 16px; }
+
+.chatHeader, .eviHeader{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.chatTitle, .eviTitle{ font-weight: 800; }
+.eviRight{ display:flex; gap:10px; align-items:center; }
+.smallLabel{ font-size:12px; color: var(--muted); }
+
+.select{
+  background: rgba(10,14,24,.65);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.chatLog{
+  height: calc(100vh - 310px);
+  min-height: 420px;
+  overflow: auto;
+  padding: 14px 14px 0 14px;
+}
+
+.msg{ display:flex; margin: 0 0 12px 0; }
+.msg.user{ justify-content: flex-end; }
+.msg.assistant{ justify-content: flex-start; }
+
+.bubble{
+  max-width: 86%;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(10,14,24,.65);
+}
+.msg.user .bubble{
+  background: linear-gradient(180deg, rgba(124,92,255,.22), rgba(10,14,24,.65));
+}
+
+.meta{
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.traceLink{
+  color: var(--accent2);
+  text-decoration: none;
+  font-weight: 700;
+}
+.traceLink:hover{ text-decoration: underline; }
+
+.md{
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.md code{
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.md pre{
+  font-family: var(--mono);
+  font-size: 12px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  overflow:auto;
+}
+.md table{
+  width: 100%;
+  border-collapse: collapse;
+  overflow:hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.md th, .md td{
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.md th{ background: rgba(255,255,255,.04); }
+
+.composer{
+  padding: 14px 16px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+.composerRow{
+  display:flex;
+  gap:10px;
+  margin-top: 10px;
+  align-items:center;
+  justify-content: flex-end;
+}
+
+.chip{
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: rgba(255,255,255,.03);
+}
+.chip.busy{ color: #ffd36b; border-color: rgba(255,211,107,.35); }
+.chip.ok{ color: #7CFFB2; border-color: rgba(124,255,178,.35); }
+.chip.err{ color: #ff7c7c; border-color: rgba(255,124,124,.35); }
+
+.tabs{
+  display:flex;
+  gap:8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tab{
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+}
+.tab.active{
+  background: linear-gradient(90deg, rgba(124,92,255,.35), rgba(0,212,255,.22));
+  border-color: rgba(124,92,255,.45);
+}
+.tabBody{ padding: 12px; }
+.hint{
+  padding: 10px 12px 14px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* สำคัญ: กัน grid item ถูกบรรทัดยาวดัน */
+.layout > * { min-width: 0; }
+
+/* ทำ evidence เป็นคอลัมน์ fixed height และให้ส่วนกลาง scroll */
+.evidence{
+  position: sticky;
+  top: 16px;
+  height: calc(100vh - 90px);   /* ปรับได้ */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;             /* กันลูกดันออก */
+}
+
+/* ให้ body ของ tab กินพื้นที่ที่เหลือและ scroll */
+.tabBody{
+  flex: 1;
+  min-height: 0;                /* โคตรสำคัญสำหรับ flex scroll */
+  overflow: hidden;
+  padding: 12px;
+}
+
+/* กล่อง evidence จริง ๆ ให้ scroll และไม่ดัน layout */
+#eviBox.pre{
+  height: 100%;
+  max-height: none;
+  overflow: auto;               /* เลื่อนในกล่อง */
+  white-space: pre;             /* คงรูปแบบ */
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* ถ้าข้อความเป็นบรรทัดยาวมาก ๆ แล้วอยากให้ตัดบรรทัดแทน scroll แนวนอน ให้ใช้อันนี้แทน:
+#eviBox.pre{
+  height: 100%;
+  max-height: none;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+*/
+
+.hint{ margin-top: auto; }
+
+

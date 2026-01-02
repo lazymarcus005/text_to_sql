@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+python-dotenv==1.0.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+sqlglot==25.31.2
+
+# LangChain + Gemini (compatible pins)
+langchain-core==0.2.43
+langchain-google-genai==1.0.10
