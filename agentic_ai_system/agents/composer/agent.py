@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import json
 
 from langchain_core.runnables import Runnable
@@ -9,12 +9,14 @@ from agentic_ai_system.orchestration.llm_models import get_llm
 from agentic_ai_system.utils.prompt_safety import escape_curly_braces, assert_prompt_vars
 from agentic_ai_system.agents.composer.prompt import SYSTEM_RULES
 
+
 def _md_escape(s: Any) -> str:
     if s is None:
         return ""
     text = str(s)
     # basic pipe escape for markdown tables
     return text.replace("|", "\\|").replace("\n", " ")
+
 
 def _rows_to_md_table(columns: List[str], rows: List[dict], max_rows: int = 10) -> str:
     cols = columns or (list(rows[0].keys()) if rows else [])
@@ -34,9 +36,39 @@ def _rows_to_md_table(columns: List[str], rows: List[dict], max_rows: int = 10) 
 
     return "\n".join([header, sep] + body_lines)
 
+
+def _format_history_for_payload(history: Any, max_items: int = 10) -> List[dict]:
+    """
+    history expected as list[{"role": "...", "content": "...", ...}]
+    Returns a compact list for payload to avoid prompt bloat.
+    """
+    if not history or not isinstance(history, list):
+        return []
+
+    items = history[-max_items:]
+    out: List[dict] = []
+    for m in items:
+        if not isinstance(m, dict):
+            continue
+        role = (m.get("role") or "user").strip()
+        content = (m.get("content") or "").strip()
+        if not content:
+            continue
+
+        # trim each message to keep payload small
+        if len(content) > 500:
+            content = content[:500] + "…"
+
+        if role not in ("user", "assistant", "system"):
+            role = "user"
+
+        out.append({"role": role, "content": content})
+    return out
+
+
 class ComposerAgent(Runnable):
     agent_name = "composer"
-    agent_version = "1.0.0"
+    agent_version = "1.0.1"  # bump version since behavior changed
 
     def __init__(self):
         self.llm = get_llm()
@@ -54,11 +86,14 @@ class ComposerAgent(Runnable):
           {
             "user_prompt": str,
             "sql": str,
-            "result": { "columns": [...], "rows_sample":[...], "row_count": int, ... }
+            "result": { "columns": [...], "rows_sample":[...], "row_count": int, ... },
+            "history": list[{"role": "...", "content": "..."}]   # optional
           }
         """
         user_prompt = input.get("user_prompt", "")
         sql = input.get("sql", "")
+        history = input.get("history")  # optional list of dicts
+
         result = input.get("result") or {}
         columns = result.get("columns") or []
         rows_sample = result.get("rows_sample") or []
@@ -66,8 +101,11 @@ class ComposerAgent(Runnable):
 
         evidence_table = _rows_to_md_table(columns, rows_sample, max_rows=10)
 
-        # ส่งให้ LLM “สรุป” แต่เราก็เตรียม evidence ให้พร้อมแล้ว
+        conversation_context = _format_history_for_payload(history, max_items=10)
+
+        # ส่งให้ LLM “สรุป” + บริบทก่อนหน้า + หลักฐาน
         payload = {
+            "conversation_context": conversation_context,  # <-- NEW
             "question": user_prompt,
             "sql": sql,
             "row_count": row_count,

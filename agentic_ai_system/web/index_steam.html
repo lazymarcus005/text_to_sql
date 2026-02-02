@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Agentic Text-to-SQL (Streaming)</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --text:#0f172a;
+      --border:#e5e7eb;
+      --shadow: 0 12px 30px rgba(2,6,23,.06);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans Thai", "Apple Color Emoji","Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 6px 14px;
+    }
+    .title{
+      font-weight: 800;
+      letter-spacing: -.02em;
+      font-size: 18px;
+    }
+    .chip{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: #fff;
+    }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .chatHeader .sub{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .chatLog{
+      height: min(68vh, 620px);
+      overflow:auto;
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .msg{
+      max-width: 88%;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      line-height: 1.35;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .msg.user{
+      align-self:flex-end;
+      background: #fff;
+    }
+    .msg.assistant{
+      align-self:flex-start;
+      background: #fafafa;
+    }
+    .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .progress{
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .compose{
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .sqlBox{
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      overflow:auto;
+    }
+    .composerOut :is(h1,h2,h3){ margin: 10px 0 6px; }
+    .composerOut p{ margin: 6px 0; }
+    .composerOut table{ border-collapse: collapse; width:100%; margin: 10px 0; }
+    .composerOut th,.composerOut td{ border: 1px solid var(--border); padding: 6px 8px; font-size: 13px; }
+    .composerOut th{ background: #f3f4f6; text-align:left; }
+
+    .bottom{
+      display:flex;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid var(--border);
+      background: #fff;
+    }
+    textarea{
+      width: 100%;
+      resize:none;
+      min-height: 46px;
+      max-height: 140px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      outline: none;
+    }
+    button{
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: #fff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor:pointer;
+    }
+    button:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    button#clearBtn{
+      border: 1px solid var(--border);
+      background: #ea9649;
+      color: #fff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="title">Agentic Text-to-SQL — Streaming</div>
+        <div class="chip" id="statusChip">Idle</div>
+      </div>
+      <div class="chip" id="traceChip">trace: -</div>
+    </div>
+
+    <div class="card">
+      <div class="chatHeader">
+        <div>
+          <div style="font-weight:800">
+            Chat
+            <span id="chatIdLabel" style="font-size:12px; font-weight:500; color:#6b7280;"></span>
+          </div>
+          <div class="sub">Realtime pipeline steps in-chat (no spinner 😌)</div>
+        </div>
+      </div>
+
+      <div class="chatLog" id="chatLog"></div>
+
+      <div class="bottom">
+        <textarea id="prompt" placeholder="พิมพ์คำถาม เช่น 'คอกสัตว์ที่เปิดใช้งานมีกี่ที่'"></textarea>
+        <button id="sendBtn">Send</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const chatLog = document.getElementById("chatLog");
+const promptEl = document.getElementById("prompt");
+const sendBtn = document.getElementById("sendBtn");
+const statusChip = document.getElementById("statusChip");
+const traceChip = document.getElementById("traceChip");
+
+function getConversationId() {
+  let cid = localStorage.getItem("conversation_id");
+  if (!cid) {
+    // ใช้ crypto.randomUUID ถ้ามี (modern browsers)
+    cid = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+    localStorage.setItem("conversation_id", cid);
+  }
+  return cid;
+}
+function newChat() {
+  // สร้าง conversation_id ใหม่
+  const cid = (crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+
+  localStorage.setItem("conversation_id", cid);
+
+  // เคลียร์ UI
+  chatLog.innerHTML = "";
+  promptEl.value = "";
+
+  // รีเซ็ตสถานะ
+  setStatus("Idle");
+  setTrace(null);
+
+  renderChatId();
+
+}
+
+const chatIdLabel = document.getElementById("chatIdLabel");
+
+function renderChatId() {
+  const cid = getConversationId();
+  // โชว์แค่ท้ายๆ พออ่านง่าย
+  chatIdLabel.textContent = ` · id: ${cid.slice(-8)}`;
+}
+
+
+function setStatus(text){ statusChip.textContent = text; }
+function setTrace(id){ traceChip.textContent = "trace: " + (id ? String(id).slice(-8) : "-"); }
+
+function addMsg(role, html){
+  const box = document.createElement("div");
+  box.className = "msg " + role;
+  box.innerHTML = html;
+  chatLog.appendChild(box);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return box;
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+let debugLog = [];
+
+function appendLine(el, line){
+  debugLog.push(line);
+  const p = el.querySelector(".progress");
+  if(!p) return;
+  p.innerHTML = `<div>${esc(line)}</div>`;
+}
+
+
+
+function setComposer(el, markdown){
+  const out = el.querySelector(".composerOut");
+  if(!out) return;
+  out.innerHTML = marked.parse(markdown || "");
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function setSQL(el, sql){
+  const pre = el.querySelector(".sqlBox");
+  if(!pre) return;
+  pre.textContent = sql || "";
+}
+
+function parseSSE(buffer){
+  // Minimal SSE parser: returns {events, rest}
+  // We parse chunks separated by double newlines.
+  const parts = buffer.split("\n\n");
+  const rest = parts.pop(); // last may be incomplete
+  const events = [];
+  for(const part of parts){
+    const lines = part.split("\n");
+    let ev = "message";
+    let dataLines = [];
+    for(const line of lines){
+      if(line.startsWith("event:")) ev = line.slice(6).trim();
+      if(line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+    }
+    const dataRaw = dataLines.join("\n");
+    let data = dataRaw;
+    try{ data = JSON.parse(dataRaw); }catch(e){}
+    events.push({event: ev, data});
+  }
+  return {events, rest};
+}
+
+async function streamQuery(q){
+  setStatus("Working…");
+  sendBtn.disabled = true;
+
+  addMsg("user", esc(q));
+
+  // Assistant message that will update in-place (ChatGPT style)
+  const asst = addMsg("assistant", `
+    <div class="progress"></div>
+    <div class="sqlBox" style="display:none"></div>
+    <div class="compose composerOut"></div>
+  `);
+
+  // We'll show SQL box only after we receive sql event.
+  const sqlBox = asst.querySelector(".sqlBox");
+
+  let buffer = "";
+  let gotDone = false;
+
+  try{
+    const conversation_id = getConversationId();
+    const res = await fetch("/query/stream", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({user_prompt: q, conversation_id })
+    });
+
+    if(!res.ok || !res.body){
+      const t = await res.text();
+      throw new Error(t || ("HTTP " + res.status));
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder("utf-8");
+
+    while(true){
+      const {value, done} = await reader.read();
+      if(done) break;
+      buffer += dec.decode(value, {stream:true});
+
+      const parsed = parseSSE(buffer);
+      buffer = parsed.rest;
+
+      for(const evt of parsed.events){
+        if(evt.event === "step"){
+          const {trace_id, stage, message} = evt.data || {};
+          if(trace_id) setTrace(trace_id);
+          appendLine(asst, message || stage || "…");
+        }
+        if(evt.event === "sql"){
+          const {trace_id, sql} = evt.data || {};
+          if(trace_id) setTrace(trace_id);
+          sqlBox.style.display = "block";
+          setSQL(asst, sql);
+          appendLine(asst, "SQL ready ✅");
+        }
+        if(evt.event === "rows"){
+          const c = evt.data || {};
+          appendLine(asst, `Received rows chunk #${c.chunk_index} (+${c.row_count})`);
+        }
+        if(evt.event === "answer"){
+          const {markdown} = evt.data || {};
+          appendLine(asst, "Answer ready ✅");
+          setComposer(asst, markdown || "");
+        }
+        if(evt.event === "error"){
+          const e = evt.data || {};
+          appendLine(asst, `Error: ${e.message || "unknown"}`);
+          gotDone = true;
+          setStatus("Error");
+        }
+        if(evt.event === "done"){
+          gotDone = true;
+          setStatus((evt.data && evt.data.status === "success") ? "Done" : "Done (fail)");
+        }
+      }
+    }
+  } catch(err){
+    appendLine(asst, "Error: " + (err?.message || String(err)));
+    setStatus("Error");
+  } finally{
+    sendBtn.disabled = false;
+    if(!gotDone) setStatus("Done");
+  }
+}
+
+sendBtn.addEventListener("click", () => {
+  const q = (promptEl.value || "").trim();
+  if(!q) return;
+  promptEl.value = "";
+  streamQuery(q);
+});
+
+promptEl.addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  newChat();
+  addMsg("assistant", "<em>เริ่มแชทใหม่แล้ว ✨</em>");
+
+});
+
+renderChatId();
+
+</script>
+</body>
+</html>

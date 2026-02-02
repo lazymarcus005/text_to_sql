@@ -6,16 +6,14 @@ from decimal import Decimal
 from langchain_core.runnables import Runnable
 from sqlalchemy import create_engine, text
 
-
 def _db_url() -> str:
     return (
-        f"postgresql+psycopg2://{os.getenv('POSTGRES_USER','app')}:"
-        f"{os.getenv('POSTGRES_PASSWORD','app_pw')}@"
-        f"{os.getenv('POSTGRES_HOST','db')}:"
-        f"{os.getenv('POSTGRES_PORT','5432')}/"
-        f"{os.getenv('POSTGRES_DB','appdb')}"
+        f"mysql+pymysql://{os.getenv('DB_USER','app')}:"
+        f"{os.getenv('DB_PASSWORD','app_pw')}@"
+        f"{os.getenv('DB_HOST','db')}:"
+        f"{os.getenv('DB_PORT','3306')}/"
+        f"{os.getenv('DB_NAME','nocobase')}?charset=utf8mb4"
     )
-
 
 def _to_json_safe(x: Any) -> Any:
     """Convert values to JSON-serializable types (handles Decimal recursively)."""
@@ -54,7 +52,8 @@ class SQLExecAgent(Runnable):
 
         t0 = time.time()
         with self.engine.connect() as conn:
-            conn.execute(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
+            # conn.execute(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
+            conn.execute(text("SET SESSION max_statement_time = :t"), {"t": timeout_ms / 1000})
             res = conn.execute(text(sql), params)
             rows = res.fetchmany(max_rows)
             cols = list(res.keys())

@@ -1,5 +1,7 @@
+# agentic_ai_system/agents/text_to_sql/agent.py
 from __future__ import annotations
-from typing import Dict, Any
+
+from typing import Dict, Any, Optional, List
 import os, json
 
 from langchain_core.runnables import Runnable
@@ -9,6 +11,9 @@ from agentic_ai_system.orchestration.llm_models import get_llm
 from agentic_ai_system.agents.text_to_sql.prompt import SYSTEM_RULES
 from agentic_ai_system.validators.sql_hygiene import extract_json_like, normalize_sql, validate_sql
 from agentic_ai_system.utils.prompt_safety import escape_curly_braces, assert_prompt_vars
+# from agentic_ai_system.agents.text_to_sql.schema_retriever import PostgresSchemaRetriever
+from agentic_ai_system.agents.text_to_sql.schema_retriever import MariaDBSchemaRetriever
+
 
 class TextToSQLAgent(Runnable):
     agent_name = "text_to_sql"
@@ -16,6 +21,9 @@ class TextToSQLAgent(Runnable):
 
     def __init__(self):
         self.llm = get_llm()
+
+        # self.schema_retriever = PostgresSchemaRetriever()
+        self.schema_retriever = MariaDBSchemaRetriever()
 
         # Escape braces in SYSTEM_RULES so JSON examples won't be treated as template vars
         safe_system = escape_curly_braces(SYSTEM_RULES, allowed_vars=set())
@@ -34,7 +42,7 @@ class TextToSQLAgent(Runnable):
             raise ValueError("JSON root must be an object")
 
         sql = normalize_sql(data.get("sql", ""))
-        ok, reason = validate_sql(sql, dialect="postgres")
+        ok, reason = validate_sql(sql, dialect="mysql")
         if not ok:
             raise ValueError(reason)
 
@@ -44,8 +52,43 @@ class TextToSQLAgent(Runnable):
         data.setdefault("expected_columns", [])
         return data
 
+    def _format_history(self, history: Any, max_items: int = 10) -> str:
+        """
+        history expected as: list[{"role": "...", "content": "..."}]
+        Keep it short to avoid prompt bloat.
+        """
+        if not history:
+            return ""
+
+        if not isinstance(history, list):
+            return ""
+
+        # take last max_items
+        items = history[-max_items:]
+        lines: List[str] = []
+        for m in items:
+            if not isinstance(m, dict):
+                continue
+            role = (m.get("role") or "").strip()
+            content = (m.get("content") or "").strip()
+            if not content:
+                continue
+
+            # hard trim per line to reduce bloat
+            if len(content) > 500:
+                content = content[:500] + "…"
+
+            if role not in ("user", "assistant", "system"):
+                role = "user"
+
+            label = "User" if role == "user" else ("Assistant" if role == "assistant" else "System")
+            lines.append(f"- {label}: {content}")
+
+        return "\n".join(lines).strip()
+
     def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
         user_prompt = input.get("raw_user_prompt", "")
+        history = input.get("history", None)  # list of dicts from memory store
         max_retries = int(os.getenv("TEXT2SQL_MAX_RETRIES", "3"))
 
         repair_note = ""
@@ -53,7 +96,8 @@ class TextToSQLAgent(Runnable):
 
         for _ in range(max_retries):
             chain = self.prompt | self.llm
-            msg = user_prompt if not repair_note else (user_prompt + "\n\n" + repair_note)
+            base_prompt = self._build_prompt(user_prompt, history=history)
+            msg = base_prompt if not repair_note else (base_prompt + "\n\n" + repair_note)
 
             resp = chain.invoke({"q": msg})
             raw = getattr(resp, "content", "") or ""
@@ -67,7 +111,7 @@ class TextToSQLAgent(Runnable):
                     "result": {
                         "command": {
                             "type": "sql",
-                            "dialect": "postgres",
+                            "dialect": "mysql",
                             "statement": data["sql"],
                             "params": data.get("params", {}) or {}
                         },
@@ -91,3 +135,36 @@ class TextToSQLAgent(Runnable):
             "status": "fail",
             "error": {"error_code": "TEXT2SQL_FAILED", "message": last_err or "Unknown", "retryable": False}
         }
+
+    def _build_prompt(self, user_prompt: str, history: Optional[Any] = None) -> str:
+        # IMPORTANT: schema retrieval uses ONLY current question to avoid drift
+        retrieved = self.schema_retriever.retrieve_relevant(
+            user_prompt,
+            top_k_tables=6,
+            expand_fk_hops=1,
+        )
+        schema_ctx = self.schema_retriever.format_context(retrieved)
+
+        history_text = self._format_history(history, max_items=10)
+
+        parts: List[str] = []
+
+        if history_text:
+            parts.append(
+                "Conversation context (most recent last; use as background, do not invent schema):\n"
+                + history_text
+            )
+
+        parts.append("Current question:\n" + (user_prompt or ""))
+
+        parts.append(schema_ctx)
+
+        parts.append(
+            "Rules:\n"
+            "- Use ONLY the schema provided above.\n"
+            "- Do NOT guess table or column names.\n"
+            "- If the question is ambiguous, state assumptions explicitly.\n"
+            "- If prior context implies filters/time range/entities, apply them and state assumptions.\n"
+        )
+
+        return "\n\n".join([p for p in parts if p and p.strip()])

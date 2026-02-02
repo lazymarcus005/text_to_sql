@@ -34,24 +34,7 @@ def normalize_sql(sql: str) -> str:
         s = s.rstrip() + ";"
     return s
 
-# def validate_sql(sql: str, dialect: str = "postgres") -> Tuple[bool, str]:
-#     if not sql or not sql.strip():
-#         return False, "SQL is empty"
-#     up = sql.upper()
-
-#     if any(k in up for k in DANGEROUS):
-#         return False, "Only SELECT is allowed (DDL/DML keyword detected)." + up
-#     if not up.lstrip().startswith("SELECT"):
-#         return False, "SQL must start with SELECT."
-#     try:
-#         parsed = sqlglot.parse_one(sql, dialect=dialect)
-#         if parsed is None:
-#             return False, "SQL parse returned None."
-#     except Exception as e:
-#         return False, f"SQL parse error: {e}"
-#     return True, "ok"
-
-def validate_sql(sql: str, dialect: str = "postgres"):
+def validate_sql(sql: str, dialect: str = "mysql"):
     if not sql or not sql.strip():
         return False, "SQL is empty"
 

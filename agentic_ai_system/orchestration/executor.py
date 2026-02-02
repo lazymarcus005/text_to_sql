@@ -34,7 +34,7 @@ def run_pipeline(user_prompt: str) -> Dict[str, Any]:
             return {"trace_id": trace_id, "status": "fail", "error": sql_res.get("error"), "stage": "text_to_sql"}
 
         cmd = sql_res["result"]["command"]
-        ok, reason = validate_sql(cmd.get("statement",""), dialect="postgres")
+        ok, reason = validate_sql(cmd.get("statement",""), dialect="mysql")
         if not ok:
             return {"trace_id": trace_id, "status": "fail",
                     "error": {"error_code": "SQL_VALIDATION_FAILED", "message": reason, "retryable": False}}

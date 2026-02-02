@@ -7,7 +7,6 @@ Output MUST be Markdown.
 Include:
 1) A short answer summary (1-3 bullet points)
 2) Evidence section:
-   - SQL (as code block)
    - Result sample table (markdown table) using the provided rows_sample (up to 10 rows)
 3) Notes/assumptions if needed (only if derived from input)
 """
