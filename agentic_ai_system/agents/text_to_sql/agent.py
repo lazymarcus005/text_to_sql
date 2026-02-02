@@ -1,5 +1,6 @@
 # agentic_ai_system/agents/text_to_sql/agent.py
 from __future__ import annotations
+from pathlib import Path
 
 from typing import Dict, Any, Optional, List
 import os, json
@@ -31,6 +32,14 @@ class TextToSQLAgent(Runnable):
             ("system", safe_system),
             ("human", "{q}")
         ])
+        
+        self.knowledge_dir = Path(__file__).resolve().parent / "knowlages"
+        self.knowledge_text = self._load_knowledge_files([
+            "vw_c12_summary_assis.md",
+            "vw_c102_request_tambon.md",
+            "vw_disaster_animal_count.md",
+        ])
+
         assert_prompt_vars(set(self.prompt.input_variables), {"q"})
 
     def _parse_and_validate(self, raw: str) -> Dict[str, Any]:
@@ -85,6 +94,27 @@ class TextToSQLAgent(Runnable):
             lines.append(f"- {label}: {content}")
 
         return "\n".join(lines).strip()
+
+    def _load_knowledge_files(self, filenames: List[str], max_chars_each: int = 8000) -> str:
+        blocks: List[str] = []
+        for fn in filenames:
+            p = self.knowledge_dir / fn
+            if not p.exists():
+                continue
+            txt = p.read_text(encoding="utf-8", errors="ignore").strip()
+            if not txt:
+                continue
+
+            # กัน prompt บวมเกินไป
+            if len(txt) > max_chars_each:
+                txt = txt[:max_chars_each] + "\n…(truncated)…"
+
+            blocks.append(f"### {fn}\n{txt}")
+
+        if not blocks:
+            return ""
+
+        return "Domain knowledge (read carefully; use as context, do not invent schema):\n" + "\n\n".join(blocks)
 
     def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
         user_prompt = input.get("raw_user_prompt", "")
@@ -158,6 +188,12 @@ class TextToSQLAgent(Runnable):
         parts.append("Current question:\n" + (user_prompt or ""))
 
         parts.append(schema_ctx)
+
+        if self.knowledge_text:
+            parts.append(
+                "Additional domain knowledge (about important views):\n"
+                + self.knowledge_text
+            )
 
         parts.append(
             "Rules:\n"

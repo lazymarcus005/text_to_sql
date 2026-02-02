@@ -18,6 +18,7 @@ SQL RULES:
 - Database is MariaDB. Use MariaDB/MySQL syntax ONLY.
 - NEVER use PostgreSQL-only features such as:
   date_trunc, ::type casting, FILTER, ILIKE, JSONB operators.
+- If use View do not join any table that is not in the schema use selected * columns from the view only.
 
 IMPORTANT SCHEMA RULES:
 - The database schema will be provided in the user message.
