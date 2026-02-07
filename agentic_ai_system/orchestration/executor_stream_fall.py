@@ -46,7 +46,7 @@ from sqlalchemy import create_engine, text as sql_text
 from agentic_ai_system.agents.text_to_sql.agent import TextToSQLAgent
 from agentic_ai_system.agents.composer.agent import ComposerAgent
 from agentic_ai_system.validators.sql_hygiene import validate_sql
-from agentic_ai_system.validators.domain_guard import check_in_domain
+# from agentic_ai_system.validators.domain_guard import check_in_domain
 from agentic_ai_system.memory.store import store
 
 
@@ -206,17 +206,13 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
     max_exec_retries = int(os.getenv("SQL_EXEC_MAX_RETRIES", "2"))
 
     # 1) Domain guard (optional / currently disabled)
-    yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
-    dg = check_in_domain(user_prompt)
-    if not dg.allowed:
-        # yield _sse("error", _safe_err("OUT_OF_DOMAIN", dg.message, retryable=False))
-        # yield _sse("done", {"trace_id": trace_id, "status": "fail"})
-        yield _sse("error", _safe_err("OUT_OF_DOMAIN", "Question is outside supported domain", retryable=False))
-        yield _sse("answer", {"trace_id": trace_id, "markdown": dg.message})
-        yield _sse("done", {"trace_id": trace_id, "status": "fail"})
-
-        return
-    yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
+    # dg = check_in_domain(user_prompt)
+    # if not dg.allowed:
+    #     yield _sse("error", _safe_err("OUT_OF_DOMAIN", dg.message, retryable=False))
+    #     yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+    #     return
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
 
     # 2-4) Text-to-SQL + Validate + Execute (with retry loop)
     t2s = TextToSQLAgent()
@@ -249,22 +245,10 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
         sql_res = t2s.invoke(t2s_payload)
         if sql_res.get("status") != "success":
             err = sql_res.get("error") or _safe_err("TEXT_TO_SQL_FAILED", "LLM failed to generate SQL", retryable=True)
+            # ensure trace_id/attempt included for client consistency
             err = {"trace_id": trace_id, "attempt": attempt, **err}
             yield _sse("error", err)
-            # yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
-            
-            
-            
-            # OPTIONAL: send a human-friendly markdown answer too
-            fallback_md = (
-                "### คำตอบ\n"
-                "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
-                "### ข้อเสนอแนะ\n"
-                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
-                "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
-                f"**trace_id:** `{trace_id}`\n"
-            )
-            yield _sse("answer", {"trace_id": trace_id, "attempt": attempt, "markdown": fallback_md})
+            yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
             return
 
         cmd = (sql_res.get("result") or {}).get("command") or {}
@@ -358,34 +342,13 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
                 attempt += 1
                 continue
 
-            
-            fallback_md = (
-                "### คำตอบ\n"
-                "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
-                "### ข้อเสนอแนะ\n"
-                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
-                "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
-                f"**trace_id:** `{trace_id}`\n"
-            )
-            yield _sse("answer", {"trace_id": trace_id, "attempt": attempt, "markdown": fallback_md})
-            # yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
+            yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
             return
 
     # Safety: if loop ended without break (shouldn't happen), fail fast
     if not final_statement:
-        # yield _sse("error", {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_EXECUTION_FAILED", "No successful SQL execution", retryable=False)})
-        # yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
-        
-        # OPTIONAL: send a human-friendly markdown answer too
-        fallback_md = (
-            "### คำตอบ\n"
-            "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
-            "### ข้อเสนอแนะ\n"
-            "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
-            "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
-            f"**trace_id:** `{trace_id}`\n"
-        )
-        yield _sse("answer", {"trace_id": trace_id, "attempt": attempt, "markdown": fallback_md})
+        yield _sse("error", {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_EXECUTION_FAILED", "No successful SQL execution", retryable=False)})
+        yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
         return
 
     # 5) Composer (LLM -> markdown answer)
