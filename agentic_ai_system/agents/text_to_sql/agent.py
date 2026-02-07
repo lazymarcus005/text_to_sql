@@ -121,12 +121,49 @@ class TextToSQLAgent(Runnable):
         history = input.get("history", None)  # list of dicts from memory store
         max_retries = int(os.getenv("TEXT2SQL_MAX_RETRIES", "3"))
 
+        # --- NEW: external repair inputs (from SQL execution failure) ---
+        previous_sql = (input.get("previous_sql") or "").strip()
+        execution_error = input.get("execution_error") or {}
+        attempt_no = input.get("attempt", None)
+
+        def _trim(s: str, n: int) -> str:
+            s = (s or "").strip()
+            return s if len(s) <= n else (s[:n] + "…")
+
+        # Build repair_note BEFORE the loop if execution_error exists
         repair_note = ""
+        if isinstance(execution_error, dict) and (execution_error.get("message") or execution_error.get("code")):
+            err_code = str(execution_error.get("code") or "").strip()
+            err_msg = str(execution_error.get("message") or "").strip()
+
+            # Keep these small to avoid prompt bloat
+            previous_sql_short = _trim(previous_sql, 2000)
+            err_msg_short = _trim(err_msg, 600)
+
+            # External execution feedback section (strong instruction: no schema guessing)
+            repair_note = (
+                "EXECUTION FEEDBACK (the previous SQL failed when executed):\n"
+                f"- Attempt: {attempt_no}\n" if attempt_no is not None else
+                "EXECUTION FEEDBACK (the previous SQL failed when executed):\n"
+            )
+            repair_note += (
+                f"- Previous SQL: {previous_sql_short}\n"
+                f"- DB Error: {err_code + ': ' if err_code else ''}{err_msg_short}\n\n"
+                "Fix requirements:\n"
+                "- Rewrite the SQL so it EXECUTES successfully and still answers the current question.\n"
+                "- Use ONLY the schema provided above. DO NOT guess table/column names.\n"
+                "- If an unknown column/table error happened, DO NOT invent names: instead re-check schema context.\n"
+                "- Output ONLY valid JSON with keys: sql, params, assumptions, expected_columns.\n"
+                "- SQL must be ONE SELECT statement, start with SELECT, end with ';'.\n"
+            )
+
         last_err = None
 
         for _ in range(max_retries):
             chain = self.prompt | self.llm
             base_prompt = self._build_prompt(user_prompt, history=history)
+
+            # Include repair_note (execution feedback or last validation repair) if present
             msg = base_prompt if not repair_note else (base_prompt + "\n\n" + repair_note)
 
             resp = chain.invoke({"q": msg})
@@ -143,28 +180,92 @@ class TextToSQLAgent(Runnable):
                             "type": "sql",
                             "dialect": "mysql",
                             "statement": data["sql"],
-                            "params": data.get("params", {}) or {}
+                            "params": data.get("params", {}) or {},
                         },
                         "assumptions": data.get("assumptions", []),
-                        "expected_columns": data.get("expected_columns", [])
-                    }
+                        "expected_columns": data.get("expected_columns", []),
+                    },
                 }
             except Exception as e:
+                # Internal retry: JSON parse / SQL hygiene failed
                 last_err = str(e)
-                repair_note = (
-                    "REPAIR INSTRUCTIONS:\n"
-                    "- Output ONLY valid JSON, nothing else.\n"
-                    "- JSON must have keys: sql, params, assumptions, expected_columns.\n"
-                    f"- Fix this error: {last_err}\n"
-                    "- SQL must be ONE SELECT statement, start with SELECT, end with ';'.\n"
-                )
+
+                # If we already had EXECUTION FEEDBACK, keep it and append the formatting rules.
+                # (Prevents the model from "fixing execution" but breaking JSON shape.)
+                if "EXECUTION FEEDBACK" in (repair_note or ""):
+                    repair_note = (
+                        repair_note
+                        + "\n"
+                        + "ADDITIONAL FORMAT FIX (your last output failed validation):\n"
+                        + "- Output ONLY valid JSON, nothing else.\n"
+                        + "- JSON must have keys: sql, params, assumptions, expected_columns.\n"
+                        + f"- Fix this error: {_trim(last_err, 400)}\n"
+                    )
+                else:
+                    repair_note = (
+                        "REPAIR INSTRUCTIONS:\n"
+                        "- Output ONLY valid JSON, nothing else.\n"
+                        "- JSON must have keys: sql, params, assumptions, expected_columns.\n"
+                        f"- Fix this error: {_trim(last_err, 400)}\n"
+                        "- SQL must be ONE SELECT statement, start with SELECT, end with ';'.\n"
+                    )
 
         return {
             "agent_name": self.agent_name,
             "agent_version": self.agent_version,
             "status": "fail",
-            "error": {"error_code": "TEXT2SQL_FAILED", "message": last_err or "Unknown", "retryable": False}
+            "error": {"error_code": "TEXT2SQL_FAILED", "message": last_err or "Unknown", "retryable": False},
         }
+
+    # def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
+    #     user_prompt = input.get("raw_user_prompt", "")
+    #     history = input.get("history", None)  # list of dicts from memory store
+    #     max_retries = int(os.getenv("TEXT2SQL_MAX_RETRIES", "3"))
+
+    #     repair_note = ""
+    #     last_err = None
+
+    #     for _ in range(max_retries):
+    #         chain = self.prompt | self.llm
+    #         base_prompt = self._build_prompt(user_prompt, history=history)
+    #         msg = base_prompt if not repair_note else (base_prompt + "\n\n" + repair_note)
+
+    #         resp = chain.invoke({"q": msg})
+    #         raw = getattr(resp, "content", "") or ""
+
+    #         try:
+    #             data = self._parse_and_validate(raw)
+    #             return {
+    #                 "agent_name": self.agent_name,
+    #                 "agent_version": self.agent_version,
+    #                 "status": "success",
+    #                 "result": {
+    #                     "command": {
+    #                         "type": "sql",
+    #                         "dialect": "mysql",
+    #                         "statement": data["sql"],
+    #                         "params": data.get("params", {}) or {}
+    #                     },
+    #                     "assumptions": data.get("assumptions", []),
+    #                     "expected_columns": data.get("expected_columns", [])
+    #                 }
+    #             }
+    #         except Exception as e:
+    #             last_err = str(e)
+    #             repair_note = (
+    #                 "REPAIR INSTRUCTIONS:\n"
+    #                 "- Output ONLY valid JSON, nothing else.\n"
+    #                 "- JSON must have keys: sql, params, assumptions, expected_columns.\n"
+    #                 f"- Fix this error: {last_err}\n"
+    #                 "- SQL must be ONE SELECT statement, start with SELECT, end with ';'.\n"
+    #             )
+
+    #     return {
+    #         "agent_name": self.agent_name,
+    #         "agent_version": self.agent_version,
+    #         "status": "fail",
+    #         "error": {"error_code": "TEXT2SQL_FAILED", "message": last_err or "Unknown", "retryable": False}
+    #     }
 
     def _build_prompt(self, user_prompt: str, history: Optional[Any] = None) -> str:
         # IMPORTANT: schema retrieval uses ONLY current question to avoid drift

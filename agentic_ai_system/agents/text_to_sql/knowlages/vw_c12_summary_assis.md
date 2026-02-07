@@ -9,7 +9,7 @@
 
 สุดท้าย `GROUP BY cra.b10_disaster_area_id` แล้วนับจำนวนเกษตรกรแบบ distinct
 
-## Output หลักที่ VIEW คืนมา (ไฮไลต์ที่สำคัญ)
+## Output หลักที่ VIEW คืนมา 
 
 * ตัวตนพื้นที่/เหตุการณ์: `cra.b10_disaster_area_id`, `cra.b00_open_disaster_id`, `bod.name`, `start_at`, `end_at`
 * สรุปงบ/ยอดช่วยเหลือจาก `cra`: `value_assis_amount`, `organization_assis_amont`, `government_budget`, `permanent_secretary_budget`, `approved_at`

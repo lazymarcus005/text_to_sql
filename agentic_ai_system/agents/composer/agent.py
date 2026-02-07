@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import json
 
 from langchain_core.runnables import Runnable
@@ -14,13 +14,12 @@ def _md_escape(s: Any) -> str:
     if s is None:
         return ""
     text = str(s)
-    # basic pipe escape for markdown tables
     return text.replace("|", "\\|").replace("\n", " ")
 
 
 def _rows_to_md_table(columns: List[str], rows: List[dict], max_rows: int = 10) -> str:
     cols = columns or (list(rows[0].keys()) if rows else [])
-    cols = cols[:20]  # hard cap columns to keep UI readable
+    cols = cols[:20]
     use_rows = (rows or [])[:max_rows]
 
     header = "| " + " | ".join(_md_escape(c) for c in cols) + " |"
@@ -55,7 +54,6 @@ def _format_history_for_payload(history: Any, max_items: int = 10) -> List[dict]
         if not content:
             continue
 
-        # trim each message to keep payload small
         if len(content) > 500:
             content = content[:500] + "…"
 
@@ -68,7 +66,7 @@ def _format_history_for_payload(history: Any, max_items: int = 10) -> List[dict]
 
 class ComposerAgent(Runnable):
     agent_name = "composer"
-    agent_version = "1.0.1"  # bump version since behavior changed
+    agent_version = "1.0.2"  # bump version since behavior changed again
 
     def __init__(self):
         self.llm = get_llm()
@@ -87,12 +85,19 @@ class ComposerAgent(Runnable):
             "user_prompt": str,
             "sql": str,
             "result": { "columns": [...], "rows_sample":[...], "row_count": int, ... },
-            "history": list[{"role": "...", "content": "..."}]   # optional
+            "history": list[{"role": "...", "content": "..."}],   # optional
+            "meta": {                                           # optional (NEW)
+                "attempt_count": int,
+                "is_sampled": bool,
+                "max_rows_limit": int,
+                "timeout_ms": int
+            }
           }
         """
         user_prompt = input.get("user_prompt", "")
         sql = input.get("sql", "")
-        history = input.get("history")  # optional list of dicts
+        history = input.get("history")
+        meta = input.get("meta") or {}  # <-- NEW
 
         result = input.get("result") or {}
         columns = result.get("columns") or []
@@ -100,18 +105,29 @@ class ComposerAgent(Runnable):
         row_count = result.get("row_count")
 
         evidence_table = _rows_to_md_table(columns, rows_sample, max_rows=10)
-
         conversation_context = _format_history_for_payload(history, max_items=10)
 
-        # ส่งให้ LLM “สรุป” + บริบทก่อนหน้า + หลักฐาน
+        confidence_hints = {
+            "sample_penalty": 0.15 if meta.get("is_sampled") else 0.0,
+            "retry_penalty": max(0, (meta.get("attempt_count", 1) - 1)) * 0.1,
+            "row_count": row_count,
+        }
+
         payload = {
-            "conversation_context": conversation_context,  # <-- NEW
+            "conversation_context": conversation_context,
             "question": user_prompt,
             "sql": sql,
             "row_count": row_count,
             "columns": columns,
             "rows_sample": rows_sample[:10],
             "evidence_table_markdown": evidence_table,
+            "meta": {  # <-- NEW: pass through and keep it compact
+                "attempt_count": meta.get("attempt_count"),
+                "is_sampled": meta.get("is_sampled"),
+                "max_rows_limit": meta.get("max_rows_limit"),
+                "timeout_ms": meta.get("timeout_ms"),
+                "confidence_hints": confidence_hints, 
+            },
         }
 
         chain = self.prompt | self.llm
@@ -119,7 +135,6 @@ class ComposerAgent(Runnable):
 
         md = getattr(resp, "content", "") or ""
         if not md.strip():
-            # fallback deterministic markdown (กัน LLM เงียบ)
             md = (
                 f"### คำตอบ\n- _ไม่สามารถสรุปจาก LLM ได้_ \n\n"
                 f"### หลักฐาน\n"
