@@ -9,3 +9,6 @@ pymysql>=1.1.0
 # LangChain + Gemini (compatible pins)
 langchain-core==0.2.43
 langchain-google-genai==1.0.10
+
+# Markdown rendering
+markdown==3.6
