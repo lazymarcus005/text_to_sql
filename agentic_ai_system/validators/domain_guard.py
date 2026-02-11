@@ -12,7 +12,7 @@ class DomainGuardResult:
     matched_keywords: List[str]
 
 
-# โดเมนที่อนุญาต: orders, branches, sales/revenue
+# โดเมนที่อนุญาต: 
 _KEYWORD_GROUPS: List[List[str]] = [
     [
         "disaster", "emergency", "catastrophe",
@@ -22,7 +22,6 @@ _KEYWORD_GROUPS: List[List[str]] = [
         "น้ำท่วม", "อุทกภัย", "พายุ", "แผ่นดินไหว", "ดินถล่ม",
         "ไฟไหม้", "ไฟป่า", "ภัยแล้ง",
     ],    
-    # applications / request-related
     [
         "apply", "application", "request", "submit",
         "register", "registration", "form", "document",
@@ -37,7 +36,6 @@ _KEYWORD_GROUPS: List[List[str]] = [
         "เงินเยียวยา", "เงินชดเชย", "เงินสงเคราะห์",
         "สิทธิ", "สิทธิ์", "สวัสดิการ",
     ],
-    # orders / order-related
     [
         "status", "tracking", "progress", "review", "approve", "approved",
         "reject", "rejected", "pending",
@@ -45,7 +43,6 @@ _KEYWORD_GROUPS: List[List[str]] = [
         "อยู่ระหว่างพิจารณา", "ผ่านการอนุมัติ", "อนุมัติแล้ว",
         "ไม่ผ่าน", "ถูกปฏิเสธ", "รอผล",
     ],
-    # branches / branch-related
     [
         "government", "authority", "department", "office",
         "agency", "local authority",

@@ -88,3 +88,92 @@ def readme():
     </html>
     """
     return HTMLResponse(content=html)
+
+@app.get("/diagram", response_class=HTMLResponse)
+def diagram():
+    md_text = (WEB_DIR / "diagram.md").read_text(encoding="utf-8")
+
+    body_html = markdown.markdown(
+        md_text,
+        extensions=["fenced_code", "tables"]
+    )
+
+    # แปลง code block mermaid → div class="mermaid"
+    # NOTE: markdown มักจะ wrap ด้วย <pre><code ...>...</code></pre>
+    body_html = body_html.replace(
+        '<code class="language-mermaid">',
+        '<div class="mermaid">'
+    ).replace(
+        "</code></pre>",
+        "</div>"
+    )
+
+    html = f"""
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="{GITHUB_MD_CSS}">
+        <script type="module">
+          import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+          mermaid.initialize({{
+            startOnLoad: true,
+            theme: "base",
+            themeVariables: {{
+              background: "#0f172a",
+              primaryColor: "#1e293b",
+              primaryTextColor: "#e2e8f0",
+              primaryBorderColor: "#334155",
+              lineColor: "#64748b",
+              secondaryColor: "#0ea5e9",
+              tertiaryColor: "#6366f1",
+              fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+              fontSize: "16px",
+              borderRadius: 12
+            }}
+          }});
+        </script>
+        <style>
+          body {{
+            background: #0f172a;
+          }}
+
+          .markdown-body {{
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+          }}
+          @media (max-width: 767px) {{
+            .markdown-body {{ padding: 15px; }}
+          }}
+
+          /* Mermaid wrapper */
+          .mermaid {{
+            background: #111827;
+            padding: 28px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            overflow-x: auto;
+            margin: 18px 0;
+          }}
+
+          /* optional: glow เบาๆ */
+          .mermaid svg {{
+            filter: drop-shadow(0 0 6px rgba(99,102,241,0.35));
+          }}
+        </style>
+        <title>Diagram</title>
+      </head>
+      <body>
+        <article class="markdown-body">
+          {body_html}
+        </article>
+      </body>
+    </html>
+    """
+
+    return HTMLResponse(content=html)
