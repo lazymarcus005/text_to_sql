@@ -17,7 +17,7 @@ metadata:
 subsets:                                                                  
   - addresses:                                                            
       # ใส่ IP ของ VM/Node ที่ docker compose bind port 8000 ไว้          
-      - ip: 144.126.140.118
+      - ip: 144.126.140.xxx
     ports:                                                                
       - name: http                                                        
         port: 8000                                                        
