@@ -38,6 +38,8 @@ class TextToSQLAgent(Runnable):
             "vw_c12_summary_assis.md",
             "vw_c102_request_tambon.md",
             "vw_disaster_animal_count.md",
+            "data_dictionary_th.md",
+            "er_diagram.md",
         ])
 
         assert_prompt_vars(set(self.prompt.input_variables), {"q"})
