@@ -47,6 +47,7 @@ from agentic_ai_system.agents.text_to_sql.agent import TextToSQLAgent
 from agentic_ai_system.agents.composer.agent import ComposerAgent
 from agentic_ai_system.validators.sql_hygiene import validate_sql
 from agentic_ai_system.validators.domain_guard import check_in_domain
+# from agentic_ai_system.validators.llm_domain_guard import check_in_domain
 from agentic_ai_system.memory.store import store
 
 
@@ -221,6 +222,37 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
     # 2-4) Text-to-SQL + Validate + Execute (with retry loop)
     t2s = TextToSQLAgent()
 
+    # 1) Domain guard (LLM)
+     # 1) Domain guard (LLM)
+
+
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
+
+    # dg = check_in_domain(
+    #     user_prompt,
+    #     llm=t2s.llm,  # <-- reuse langchain model
+    #     model=os.getenv("DOMAIN_GUARD_MODEL", "gpt-4.1-mini"),
+    #     confidence_ask_threshold=float(os.getenv("DOMAIN_GUARD_ASK_THRESHOLD", "0.60")),
+    # )
+
+    # if dg.decision == "DENY":
+    #     yield _sse("error", _safe_err("OUT_OF_DOMAIN", "Question is outside supported domain", retryable=False))
+    #     yield _sse("answer", {"trace_id": trace_id, "markdown": dg.message})
+    #     yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+    #     return
+
+    # if dg.decision == "ASK":
+    #     qs = "\n".join([f"- {q}" for q in (dg.questions or [])])
+    #     markdown = dg.message
+    #     if qs:
+    #         markdown = f"{markdown}\n\nขอถามเพิ่ม:\n{qs}"
+    #     yield _sse("answer", {"trace_id": trace_id, "markdown": markdown})
+    #     yield _sse("done", {"trace_id": trace_id, "status": "needs_input"})
+    #     return
+
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
+
+    # continue pipeline as usual...
     attempt = 0
     attempt_traces: List[Dict[str, Any]] = []
 
@@ -251,16 +283,13 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
             err = sql_res.get("error") or _safe_err("TEXT_TO_SQL_FAILED", "LLM failed to generate SQL", retryable=True)
             err = {"trace_id": trace_id, "attempt": attempt, **err}
             yield _sse("error", err)
-            # yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
-            
-            
             
             # OPTIONAL: send a human-friendly markdown answer too
             fallback_md = (
                 "### คำตอบ\n"
                 "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
                 "### ข้อเสนอแนะ\n"
-                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
+                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น  `b21_feed_count`: ข้อมูลจำนวนอาหารสัตว์ที่แจกจ่าย, `b100_disaster_area`: ข้อมูลประกาศเขตการช่วยเหลือ)..\n"
                 "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
                 f"**trace_id:** `{trace_id}`\n"
             )
@@ -277,12 +306,28 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
         yield _sse("step", {"trace_id": trace_id, "attempt": attempt, "stage": "sql_validate", "message": "Validating SQL…"})
         ok, reason = validate_sql(statement, dialect="mysql")
         if not ok:
-            yield _sse(
-                "error",
-                {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_VALIDATION_FAILED", reason, retryable=False)},
-            )
+            attempt_traces.append({
+                "sql": statement,
+                "params": params,
+                "error": {"code": "SQL_VALIDATION_FAILED", "message": reason, "retryable": True},
+            })
+            yield _sse("error", {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_VALIDATION_FAILED", reason, retryable=True)})
+
+            if attempt < max_exec_retries:
+                yield _sse("step", {"trace_id": trace_id, "attempt": attempt, "stage": "sql_validate",
+                                    "message": f"SQL failed validation — revising… (next attempt {attempt+2}/{max_exec_retries+1})"})
+                attempt += 1
+                continue
+
             yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
             return
+        # if not ok:
+        #     yield _sse(
+        #         "error",
+        #         {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_VALIDATION_FAILED", reason, retryable=False)},
+        #     )
+        #     yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
+        #     return
 
         yield _sse(
             "step",
@@ -363,7 +408,7 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
                 "### คำตอบ\n"
                 "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
                 "### ข้อเสนอแนะ\n"
-                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
+                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น  `b21_feed_count`: ข้อมูลจำนวนอาหารสัตว์ที่แจกจ่าย, `b100_disaster_area`: ข้อมูลประกาศเขตการช่วยเหลือ)..\n"
                 "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
                 f"**trace_id:** `{trace_id}`\n"
             )
@@ -373,15 +418,12 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
 
     # Safety: if loop ended without break (shouldn't happen), fail fast
     if not final_statement:
-        # yield _sse("error", {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_EXECUTION_FAILED", "No successful SQL execution", retryable=False)})
-        # yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
-        
         # OPTIONAL: send a human-friendly markdown answer too
         fallback_md = (
             "### คำตอบ\n"
             "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
             "### ข้อเสนอแนะ\n"
-            "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น orders, users)\n"
+            "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น  `b21_feed_count`: ข้อมูลจำนวนอาหารสัตว์ที่แจกจ่าย, `b100_disaster_area`: ข้อมูลประกาศเขตการช่วยเหลือ)..\n"
             "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
             f"**trace_id:** `{trace_id}`\n"
         )
