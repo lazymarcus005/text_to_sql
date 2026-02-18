@@ -13,10 +13,23 @@ GITHUB_MD_CSS = "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.
 
 load_dotenv()
 app = FastAPI(title="Agentic AI System (Gemini)", version="2.0.1")
+ALLOWED = {
+    "openai": {"gpt-4o", "gpt-4o-mini"},
+    "openrouter": {"openai/gpt-4o", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"},
+    "gemini": {"gemini-1.5-pro", "gemini-1.5-flash"},
+}
+
+DEFAULTS = {
+    "openai": "gpt-4o-mini",
+    "openrouter": "openai/gpt-4o-mini",
+    "gemini": "gemini-1.5-flash",
+}
 
 class Query(BaseModel):
     user_prompt: str
     conversation_id: Optional[str] = None
+    provider: Optional[str] = None   # openai | openrouter | gemini
+    model: Optional[str] = None      # เช่น gpt-4o-mini / gemini-1.5-pro / openai/gpt-4o-mini
 
 WEB_DIR = Path(__file__).parent / "web"
 app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
@@ -39,9 +52,20 @@ def health():
 
 @app.post("/query/stream")
 def query_stream(q: Query):
+    provider = (q.provider or os.getenv("LLM_PROVIDER", "openai")).lower()
+    model = q.model or os.getenv("MODEL") or DEFAULTS.get(provider)
+
+    if provider not in ALLOWED:
+        raise HTTPException(status_code=400, detail=f"provider not allowed: {provider}")
+
+    if not model or model not in ALLOWED[provider]:
+        raise HTTPException(status_code=400, detail=f"model not allowed for {provider}: {model}")
+
     generator = stream_sse_pipeline(
         user_prompt=q.user_prompt,
         conversation_id=q.conversation_id,
+        provider=provider,
+        model=model,
     )
     return StreamingResponse(
         generator,

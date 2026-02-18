@@ -187,8 +187,13 @@ def _run_sql_stream(
             }
             chunk_index += 1
 
-
-def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None) -> Iterator[bytes]:
+def stream_sse_pipeline(
+    user_prompt: str,
+    conversation_id: Optional[str] = None,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+) -> Iterator[bytes]:
+# def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None) -> Iterator[bytes]:
     """
     Streaming version of orchestration/executor.run_pipeline.
     It yields SSE bytes so the client can update UI in realtime.
@@ -220,7 +225,8 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
     yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
 
     # 2-4) Text-to-SQL + Validate + Execute (with retry loop)
-    t2s = TextToSQLAgent()
+    # t2s = TextToSQLAgent()
+    t2s = TextToSQLAgent(provider=provider, model=model)
 
     # 1) Domain guard (LLM)
      # 1) Domain guard (LLM)
@@ -432,6 +438,8 @@ def stream_sse_pipeline(user_prompt: str, conversation_id: Optional[str] = None)
 
     # 5) Composer (LLM -> markdown answer)
     composer = ComposerAgent()
+    composer = ComposerAgent(provider=provider, model=model)
+
     yield _sse("step", {"trace_id": trace_id, "attempt": attempt, "stage": "compose", "message": "Writing the answer…"})
 
     try:

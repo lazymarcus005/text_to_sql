@@ -12,3 +12,5 @@ langchain-google-genai==1.0.10
 
 # Markdown rendering
 markdown==3.6
+
+langchain-openai

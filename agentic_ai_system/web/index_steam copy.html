@@ -186,18 +186,6 @@
             <span id="chatIdLabel" style="font-size:12px; font-weight:500; color:#6b7280;"></span>
           </div>
           <div class="sub">Realtime pipeline steps in-chat 😄</div>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <select id="providerSel" class="chip" style="padding:8px 10px;">
-              <option value="openai">openai</option>
-              <option value="openrouter">openrouter</option>
-              <option value="gemini">gemini</option>
-            </select>
-
-            <select id="modelSel" class="chip" style="padding:8px 10px; max-width:260px;">
-              <option value="gpt-4o-mini">gpt-4o-mini</option>
-            </select>
-          </div>
-
         </div>
       </div>
 
@@ -217,34 +205,6 @@ const promptEl = document.getElementById("prompt");
 const sendBtn = document.getElementById("sendBtn");
 const statusChip = document.getElementById("statusChip");
 const traceChip = document.getElementById("traceChip");
-const providerSel = document.getElementById("providerSel");
-const modelSel = document.getElementById("modelSel");
-
-// แก้ list นี้ตามที่ backend รองรับจริง
-const MODELS = {
-  openai: ["gpt-4o", "gpt-4o-mini"],
-  openrouter: ["openai/gpt-4o", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
-  gemini: ["gemini-1.5-pro", "gemini-1.5-flash"],
-};
-
-function fillModels(provider){
-  modelSel.innerHTML = "";
-  (MODELS[provider] || []).forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = m;
-    modelSel.appendChild(opt);
-  });
-}
-
-// default (จะ override ได้ถ้านายอยากอ่านจาก env ผ่าน endpoint)
-providerSel.value = "openai";
-fillModels(providerSel.value);
-modelSel.value = "gpt-4o-mini";
-
-providerSel.addEventListener("change", () => {
-  fillModels(providerSel.value);
-});
 
 function getConversationId() {
   let cid = localStorage.getItem("conversation_id");
@@ -273,9 +233,6 @@ function newChat() {
 
   renderChatId();
 
-  providerSel.value = "openai";
-  fillModels(providerSel.value);
-  modelSel.value = "gpt-4o-mini";
 }
 
 const chatIdLabel = document.getElementById("chatIdLabel");
@@ -373,12 +330,7 @@ async function streamQuery(q){
     const res = await fetch("/query/stream", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        user_prompt: q,
-        conversation_id,
-        provider: providerSel.value,
-        model: modelSel.value
-      })
+      body: JSON.stringify({user_prompt: q, conversation_id })
     });
 
     if(!res.ok || !res.body){

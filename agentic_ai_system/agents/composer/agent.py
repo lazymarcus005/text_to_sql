@@ -68,8 +68,12 @@ class ComposerAgent(Runnable):
     agent_name = "composer"
     agent_version = "1.0.2"  # bump version since behavior changed again
 
-    def __init__(self):
-        self.llm = get_llm()
+class ComposerAgent(Runnable):
+    agent_name = "composer"
+    agent_version = "1.0.3"  # bump
+
+    def __init__(self, provider: str | None = None, model: str | None = None, temperature: float | None = None):
+        self.llm = get_llm(provider=provider, model=model, temperature=temperature)
 
         safe_system = escape_curly_braces(SYSTEM_RULES, allowed_vars=set())
         self.prompt = ChatPromptTemplate.from_messages([
@@ -77,6 +81,16 @@ class ComposerAgent(Runnable):
             ("human", "{payload_json}")
         ])
         assert_prompt_vars(set(self.prompt.input_variables), {"payload_json"})
+
+    # def __init__(self):
+    #     self.llm = get_llm()
+
+    #     safe_system = escape_curly_braces(SYSTEM_RULES, allowed_vars=set())
+    #     self.prompt = ChatPromptTemplate.from_messages([
+    #         ("system", safe_system),
+    #         ("human", "{payload_json}")
+    #     ])
+    #     assert_prompt_vars(set(self.prompt.input_variables), {"payload_json"})
 
     def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
         """
