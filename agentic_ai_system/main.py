@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,7 +15,15 @@ load_dotenv()
 app = FastAPI(title="Agentic AI System (Gemini)", version="2.0.1")
 ALLOWED = {
     "openai": {"gpt-4o", "gpt-4o-mini"},
-    "openrouter": {"openai/gpt-4o", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"},
+    "openrouter": {
+      "openai/gpt-4o",
+      "openai/gpt-4o-mini",
+      "openai/gpt-4.1-nano",
+      "openai/gpt-5-mini",
+      "openai/gpt-5.1-codex-mini",
+      "anthropic/claude-3.5-sonnet",
+      "google/gemini-2.5-flash"
+    },
     "gemini": {"gemini-1.5-pro", "gemini-1.5-flash"},
 }
 

@@ -188,13 +188,20 @@
           <div class="sub">Realtime pipeline steps in-chat 😄</div>
           <div style="display:flex; gap:10px; align-items:center;">
             <select id="providerSel" class="chip" style="padding:8px 10px;">
-              <option value="openai">openai</option>
+              <!-- <option value="openai">openai</option> -->
               <option value="openrouter">openrouter</option>
-              <option value="gemini">gemini</option>
+              
+              <!-- <option value="gemini">gemini</option> -->
             </select>
 
             <select id="modelSel" class="chip" style="padding:8px 10px; max-width:260px;">
-              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <!-- <option value="openai/gpt-4o">gpt-4o</option> -->
+              <option value="openai/gpt-4o-mini">gpt-4o-mini</option>
+              <option value="openai/gpt-4.1-nano">gpt-4.1-nano</option>
+              <option value="openai/gpt-5-mini">gpt-5-mini</option>
+              <option value="openai/gpt-5.1-codex-mini">gpt-5.1-codex-mini</option>
+              <!-- <option value="anthropic/claude-3.5-sonnet">claude-3.5-sonnet</option> -->
+              <option value="google/gemini-2.5-flash">gemini-2.5-flash</option>
             </select>
           </div>
 
@@ -223,7 +230,15 @@ const modelSel = document.getElementById("modelSel");
 // แก้ list นี้ตามที่ backend รองรับจริง
 const MODELS = {
   openai: ["gpt-4o", "gpt-4o-mini"],
-  openrouter: ["openai/gpt-4o", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
+  openrouter: [
+    "openai/gpt-4o",
+    "openai/gpt-4o-mini",
+    "openai/gpt-4.1-nano",
+    "openai/gpt-5-mini",
+    "openai/gpt-5.1-codex-mini",
+    "anthropic/claude-3.5-sonnet",
+    "google/gemini-2.5-flash"
+  ],
   gemini: ["gemini-1.5-pro", "gemini-1.5-flash"],
 };
 
@@ -238,9 +253,14 @@ function fillModels(provider){
 }
 
 // default (จะ override ได้ถ้านายอยากอ่านจาก env ผ่าน endpoint)
-providerSel.value = "openai";
-fillModels(providerSel.value);
-modelSel.value = "gpt-4o-mini";
+// providerSel.value = "openai";
+// fillModels(providerSel.value);
+// modelSel.value = "gpt-4o-mini";
+
+
+  providerSel.value = "openrouter";
+  fillModels(providerSel.value);
+  modelSel.value = "openai/gpt-4o-mini";
 
 providerSel.addEventListener("change", () => {
   fillModels(providerSel.value);
@@ -273,9 +293,9 @@ function newChat() {
 
   renderChatId();
 
-  providerSel.value = "openai";
+  providerSel.value = "openrouter";
   fillModels(providerSel.value);
-  modelSel.value = "gpt-4o-mini";
+  modelSel.value = "openai/gpt-4o-mini";
 }
 
 const chatIdLabel = document.getElementById("chatIdLabel");
