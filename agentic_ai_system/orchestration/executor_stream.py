@@ -212,17 +212,17 @@ def stream_sse_pipeline(
     max_exec_retries = int(os.getenv("SQL_EXEC_MAX_RETRIES", "2"))
 
     # 1) Domain guard (optional / currently disabled)
-    yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
-    dg = check_in_domain(user_prompt)
-    if not dg.allowed:
-        # yield _sse("error", _safe_err("OUT_OF_DOMAIN", dg.message, retryable=False))
-        # yield _sse("done", {"trace_id": trace_id, "status": "fail"})
-        yield _sse("error", _safe_err("OUT_OF_DOMAIN", "Question is outside supported domain", retryable=False))
-        yield _sse("answer", {"trace_id": trace_id, "markdown": dg.message})
-        yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
+    # dg = check_in_domain(user_prompt)
+    # if not dg.allowed:
+    #     # yield _sse("error", _safe_err("OUT_OF_DOMAIN", dg.message, retryable=False))
+    #     # yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+    #     yield _sse("error", _safe_err("OUT_OF_DOMAIN", "Question is outside supported domain", retryable=False))
+    #     yield _sse("answer", {"trace_id": trace_id, "markdown": dg.message})
+    #     yield _sse("done", {"trace_id": trace_id, "status": "fail"})
 
-        return
-    yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
+    #     return
+    # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
 
     # 2-4) Text-to-SQL + Validate + Execute (with retry loop)
     # t2s = TextToSQLAgent()
