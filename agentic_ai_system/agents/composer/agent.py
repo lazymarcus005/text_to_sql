@@ -82,16 +82,6 @@ class ComposerAgent(Runnable):
         ])
         assert_prompt_vars(set(self.prompt.input_variables), {"payload_json"})
 
-    # def __init__(self):
-    #     self.llm = get_llm()
-
-    #     safe_system = escape_curly_braces(SYSTEM_RULES, allowed_vars=set())
-    #     self.prompt = ChatPromptTemplate.from_messages([
-    #         ("system", safe_system),
-    #         ("human", "{payload_json}")
-    #     ])
-    #     assert_prompt_vars(set(self.prompt.input_variables), {"payload_json"})
-
     def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
         """
         input:

@@ -211,7 +211,7 @@ def stream_sse_pipeline(
     timeout_ms = int(os.getenv("SQL_STATEMENT_TIMEOUT_MS", "5000"))
     max_exec_retries = int(os.getenv("SQL_EXEC_MAX_RETRIES", "2"))
 
-    # 1) Domain guard (optional / currently disabled)
+    # 1) Domain guard (optional / currently disabled) #################################################
     # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
     # dg = check_in_domain(user_prompt)
     # if not dg.allowed:
@@ -226,12 +226,8 @@ def stream_sse_pipeline(
 
     # 2-4) Text-to-SQL + Validate + Execute (with retry loop)
     # t2s = TextToSQLAgent()
-    t2s = TextToSQLAgent(provider=provider, model=model)
 
-    # 1) Domain guard (LLM)
-     # 1) Domain guard (LLM)
-
-
+    # 1) Domain guard (LLM) #################################################
     # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Checking your question…"})
 
     # dg = check_in_domain(
@@ -258,6 +254,7 @@ def stream_sse_pipeline(
 
     # yield _sse("step", {"trace_id": trace_id, "stage": "domain_guard", "message": "Looks good. Generating SQL…", "status": "ok"})
 
+    t2s = TextToSQLAgent(provider=provider, model=model)
     # continue pipeline as usual...
     attempt = 0
     attempt_traces: List[Dict[str, Any]] = []
@@ -327,14 +324,7 @@ def stream_sse_pipeline(
 
             yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
             return
-        # if not ok:
-        #     yield _sse(
-        #         "error",
-        #         {"trace_id": trace_id, "attempt": attempt, **_safe_err("SQL_VALIDATION_FAILED", reason, retryable=False)},
-        #     )
-        #     yield _sse("done", {"trace_id": trace_id, "attempt": attempt, "status": "fail"})
-        #     return
-
+        
         yield _sse(
             "step",
             {
@@ -424,7 +414,6 @@ def stream_sse_pipeline(
 
     # Safety: if loop ended without break (shouldn't happen), fail fast
     if not final_statement:
-        # OPTIONAL: send a human-friendly markdown answer too
         fallback_md = (
             "### คำตอบ\n"
             "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
@@ -504,5 +493,4 @@ def _json_default(o: Any):
 
 
 def _to_jsonable(obj: Any) -> Any:
-    # แปลง nested dict/list ที่มี Decimal/datetime/UUID ให้กลายเป็นของที่ JSON ได้
     return json.loads(json.dumps(obj, ensure_ascii=False, default=_json_default))

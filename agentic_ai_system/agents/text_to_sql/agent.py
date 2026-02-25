@@ -35,14 +35,6 @@ class TextToSQLAgent(Runnable):
         ])
         
         self.knowledge_dir = Path(__file__).resolve().parent / "knowlages"
-        # self.knowledge_text = self._load_knowledge_files([
-        #     "vw_c12_summary_assis.md",
-        #     "vw_c102_request_tambon.md",
-        #     "vw_disaster_animal_count.md",
-        #     "data_dictionary_th.md",
-        #     "er_diagram.md",
-        # ])
-
         self.knowledge_text = self._load_knowledge_files([
             "data_dictionary_master_th.md",
             "data_dictionary_preparation_th.md",
@@ -178,47 +170,6 @@ class TextToSQLAgent(Runnable):
             "- Use this only to clarify relationships or column meaning.\n\n"
             + "\n\n".join(blocks)
         )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def _load_knowledge_files(self, filenames: List[str], max_chars_each: int = 8000) -> str:
-    #     blocks: List[str] = []
-    #     for fn in filenames:
-    #         p = self.knowledge_dir / fn
-    #         if not p.exists():
-    #             continue
-    #         txt = p.read_text(encoding="utf-8", errors="ignore").strip()
-    #         if not txt:
-    #             continue
-
-    #         # กัน prompt บวมเกินไป
-    #         if len(txt) > max_chars_each:
-    #             txt = txt[:max_chars_each] + "\n…(truncated)…"
-
-    #         blocks.append(f"### {fn}\n{txt}")
-
-    #     if not blocks:
-    #         return ""
-
-    #     return "Domain knowledge (read carefully; use as context, do not invent schema):\n" + "\n\n".join(blocks)
 
     def invoke(self, input: Dict[str, Any], config=None) -> Dict[str, Any]:
         user_prompt = input.get("raw_user_prompt", "")
