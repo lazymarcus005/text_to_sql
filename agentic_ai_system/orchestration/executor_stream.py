@@ -72,6 +72,86 @@ def _safe_err(code: str, message: str, retryable: bool = False) -> Dict[str, Any
     return {"error_code": code, "message": message, "retryable": retryable}
 
 
+def _build_llm_error_markdown(err_msg: str, trace_id: str) -> str:
+    """
+    Classify the LLM error and return a human-friendly Thai markdown message
+    with root cause and fix suggestions.
+    """
+    m = (err_msg or "").lower()
+
+    # --- API Key / Auth errors ---
+    if any(k in m for k in ["api key", "invalid api key", "api_key", "unauthenticated",
+                             "unauthorized", "permission denied", "authentication", "401",
+                             "illegal header value", "invalid metadata"]):
+        cause = "API Key ไม่ถูกต้องหรือหมดอายุ"
+        detail = f"`{err_msg[:200]}`"
+        tips = (
+            "- ตรวจสอบ API Key ใน `.env` ว่าถูกต้อง (ไม่มีช่องว่างหรืออักขระพิเศษ)\n"
+            "- ตรวจสอบว่า Key ยังมีสิทธิ์ใช้งานอยู่ในหน้า Dashboard ของ provider\n"
+            "- รัน `docker compose up -d --build` หลังแก้ไข `.env`"
+        )
+
+    # --- Timeout ---
+    elif any(k in m for k in ["timed out", "timeout", "check api key and network"]):
+        cause = "LLM ไม่ตอบสนองภายในเวลาที่กำหนด"
+        detail = f"`{err_msg[:200]}`"
+        tips = (
+            "- ตรวจสอบ API Key ใน `.env` ว่าถูกต้อง\n"
+            "- ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต\n"
+            "- สามารถปรับเวลา timeout ได้ที่ `LLM_REQUEST_TIMEOUT_SEC` ใน `.env` (ค่าปัจจุบัน: default 30s)\n"
+            "- รัน `docker compose up -d --build` หลังแก้ไข `.env`"
+        )
+
+    # --- Quota / Billing ---
+    elif any(k in m for k in ["quota", "billing", "rate limit", "resource_exhausted",
+                               "429", "too many requests"]):
+        cause = "เกิน Quota หรือ Rate Limit ของ API"
+        detail = f"`{err_msg[:200]}`"
+        tips = (
+            "- ตรวจสอบ Quota/Billing ในหน้า Dashboard ของ provider\n"
+            "- ลองเปลี่ยน model หรือรอสักครู่แล้วลองใหม่\n"
+            "- พิจารณาเพิ่ม credits หรือ upgrade plan"
+        )
+
+    # --- Encoding error ---
+    elif any(k in m for k in ["codec", "encode", "latin-1", "encoding", "ordinal not in range"]):
+        cause = "ปัญหา Character Encoding (ข้อความภาษาไทยไม่สามารถ encode ได้)"
+        detail = f"`{err_msg[:200]}`"
+        tips = (
+            "- เป็น bug ใน transport layer ของ LLM client\n"
+            "- ตรวจสอบ `LLM_PROVIDER` ใน `.env` ว่าตั้งค่าถูกต้อง\n"
+            "- รัน `docker compose up -d --build` หลังแก้ไข `.env`"
+        )
+
+    # --- Connection / Network ---
+    elif any(k in m for k in ["connection", "timeout", "network", "unreachable",
+                               "refused", "reset", "ssl", "certificate"]):
+        cause = "ไม่สามารถเชื่อมต่อกับ LLM API ได้"
+        detail = f"`{err_msg[:200]}`"
+        tips = (
+            "- ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต\n"
+            "- ตรวจสอบว่า `base_url` ใน `.env` ถูกต้อง (กรณีใช้ OpenRouter หรือ proxy)\n"
+            "- ลองใหม่อีกครั้ง"
+        )
+
+    # --- Generic fallback ---
+    else:
+        cause = "LLM ไม่สามารถประมวลผลคำขอได้"
+        detail = f"`{err_msg[:300]}`"
+        tips = (
+            "- ตรวจสอบ API Key และ `LLM_PROVIDER` ใน `.env`\n"
+            "- ดู log เพิ่มเติมใน `docker compose logs api`\n"
+            "- ลองใหม่อีกครั้ง"
+        )
+
+    return (
+        f"### ⚠️ เกิดข้อผิดพลาด: {cause}\n\n"
+        f"**สาเหตุ:** {detail}\n\n"
+        f"### 🔧 วิธีแก้ไข\n{tips}\n\n"
+        f"**trace_id:** `{trace_id}`"
+    )
+
+
 def _classify_sql_error(e: Exception) -> tuple[str, str, bool]:
     """
     Best-effort classification for retry logic.
@@ -281,22 +361,28 @@ def stream_sse_pipeline(
                 }
             )
 
-        sql_res = t2s.invoke(t2s_payload)
+        try:
+            sql_res = t2s.invoke(t2s_payload)
+        except Exception as llm_exc:
+            err_msg = str(llm_exc)[:400]
+            yield _sse("error", _safe_err("LLM_UNEXPECTED_ERROR", err_msg, retryable=False))
+            yield _sse("answer", {"trace_id": trace_id, "markdown": _build_llm_error_markdown(err_msg, trace_id)})
+            yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+            return
         if sql_res.get("status") != "success":
             err = sql_res.get("error") or _safe_err("TEXT_TO_SQL_FAILED", "LLM failed to generate SQL", retryable=True)
             err = {"trace_id": trace_id, "attempt": attempt, **err}
             yield _sse("error", err)
-            
-            # OPTIONAL: send a human-friendly markdown answer too
-            fallback_md = (
-                "### คำตอบ\n"
-                "- ขออภัยค่ะ ไม่สามารถสร้างคำสั่ง SQL ได้ เนื่องจากคำถามอาจไม่ชัดเจนหรือคำถามอาจไม่อยู่ในขอบเขตที่ระบบรองรับ\n\n"
-                "### ข้อเสนอแนะ\n"
-                "- ลองระบุชื่อข้อมูล/ตารางที่ต้องการ (เช่น  `b21_feed_count`: ข้อมูลจำนวนอาหารสัตว์ที่แจกจ่าย, `b100_disaster_area`: ข้อมูลประกาศเขตการช่วยเหลือ)..\n"
-                "- ระบุช่วงเวลา/เงื่อนไขให้ชัดขึ้น\n\n"
-                f"**trace_id:** `{trace_id}`\n"
-            )
-            yield _sse("answer", {"trace_id": trace_id, "attempt": attempt, "markdown": fallback_md})
+
+            err_msg = err.get("message", "")
+            # Non-retryable → fail fast with informative message
+            if not err.get("retryable", True):
+                yield _sse("answer", {"trace_id": trace_id, "markdown": _build_llm_error_markdown(err_msg, trace_id)})
+                yield _sse("done", {"trace_id": trace_id, "status": "fail"})
+                return
+
+            # Retryable LLM error → also show informative message and stop
+            yield _sse("answer", {"trace_id": trace_id, "attempt": attempt, "markdown": _build_llm_error_markdown(err_msg, trace_id)})
             return
 
         cmd = (sql_res.get("result") or {}).get("command") or {}
@@ -426,7 +512,6 @@ def stream_sse_pipeline(
         return
 
     # 5) Composer (LLM -> markdown answer)
-    composer = ComposerAgent()
     composer = ComposerAgent(provider=provider, model=model)
 
     yield _sse("step", {"trace_id": trace_id, "attempt": attempt, "stage": "compose", "message": "Writing the answer…"})

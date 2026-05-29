@@ -104,6 +104,21 @@
       font-size: 13px;
       color: var(--muted);
     }
+    @keyframes dots-blink {
+      0%  { opacity: 1; }
+      33% { opacity: 1; }
+      34% { opacity: 0; }
+      66% { opacity: 0; }
+      67% { opacity: 1; }
+     100% { opacity: 1; }
+    }
+    .dots-anim span {
+      animation: dots-blink 1.2s infinite;
+      display: inline-block;
+    }
+    .dots-anim span:nth-child(2) { animation-delay: 0.2s; }
+    .dots-anim span:nth-child(3) { animation-delay: 0.4s; }
+    .dots-anim span:nth-child(4) { animation-delay: 0.6s; }
     .compose{
       margin-top: 8px;
       padding-top: 8px;
@@ -156,6 +171,83 @@
       opacity: .55;
       cursor: not-allowed;
     }
+    button#exampleBtn{
+      border: 1px solid #6366f1;
+      background: #f5f3ff;
+      color: #4f46e5;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    button#exampleBtn:hover{ background: #ede9fe; }
+
+    /* Example Questions Popup */
+    .eq-backdrop{
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.35);
+      z-index: 9000;
+      align-items:center;
+      justify-content:center;
+    }
+    .eq-backdrop.open{ display:flex; }
+    .eq-modal{
+      background:#fff;
+      border-radius: 18px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      width: min(560px, 95vw);
+      max-height: 80vh;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .eq-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .eq-header h3{ margin:0; font-size:16px; }
+    .eq-close{
+      background:none;
+      border:none;
+      color:var(--muted);
+      font-size:20px;
+      cursor:pointer;
+      padding:4px 8px;
+      border-radius:8px;
+    }
+    .eq-close:hover{ background:#f1f5f9; color:var(--text); }
+    .eq-list{
+      overflow-y:auto;
+      padding: 12px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .eq-section-label{
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 6px 6px 2px;
+    }
+    .eq-item{
+      text-align:left;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      color: var(--text);
+      cursor:pointer;
+      transition: background .15s, border-color .15s;
+      font-weight: 400;
+    }
+    .eq-item:hover{ background: #eff6ff; border-color:#93c5fd; color:#1d4ed8; }
+
     button#clearBtn{
       border: 1px solid var(--border);
       background:  #f3f4f6;
@@ -165,6 +257,169 @@
       font-weight: 700;
       cursor:pointer;
     }
+
+    /* ── Settings Modal ── */
+    .modal-backdrop{
+      display:none;
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.35);
+      z-index: 999;
+      align-items:center;
+      justify-content:center;
+    }
+    .modal-backdrop.open{ display:flex; }
+    .modal{
+      background:#fff;
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+      width: min(700px, 95vw);
+      max-height: 85vh;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2{ margin:0; font-size:16px; font-weight:800; }
+    .modal-close{
+      background:none; border:none; font-size:20px;
+      cursor:pointer; color:var(--muted); padding:4px 8px;
+      border-radius:8px;
+    }
+    .modal-close:hover{ background:#f3f4f6; }
+    .modal-body{
+      overflow-y:auto;
+      padding: 18px 22px 22px;
+      display:flex;
+      flex-direction:column;
+      gap:20px;
+    }
+    .settings-section h3{
+      font-size:13px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.06em;
+      color:var(--muted); margin:0 0 10px;
+    }
+    .settings-table{
+      width:100%; border-collapse:collapse;
+      font-size:13px;
+    }
+    .settings-table th{
+      text-align:left; padding:6px 10px;
+      background:#f8f9fa; border:1px solid var(--border);
+      font-weight:600; color:#374151;
+    }
+    .settings-table td{
+      padding:6px 10px; border:1px solid var(--border);
+      color:#1f2937;
+    }
+    .settings-table td.mono{
+      font-family: ui-monospace, monospace; font-size:12px;
+    }
+    .badge-ok  { color:#16a34a; font-weight:700; }
+    .badge-err { color:#dc2626; font-weight:700; }
+    .badge-default { background:#dbeafe; color:#1d4ed8; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; }
+
+    /* ── Setup Warning Modal ── */
+    .setup-backdrop{
+      display:none;
+      position:fixed; inset:0;
+      background: rgba(15,23,42,.55);
+      z-index: 1000;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+    .setup-backdrop.open{ display:flex; }
+    .setup-modal{
+      background:#fff;
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.25);
+      width: min(520px, 100%);
+      max-height: 90vh;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .setup-header{
+      flex-shrink:0;
+      background: linear-gradient(135deg,#fef3c7,#fde68a);
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid #fcd34d;
+    }
+    .setup-header .setup-icon{ font-size:28px; margin-bottom:4px; }
+    .setup-header h2{ margin:0; font-size:16px; font-weight:800; color:#92400e; }
+    .setup-header p{ margin:4px 0 0; font-size:12px; color:#b45309; }
+    .setup-body{
+      flex:1;
+      overflow-y:auto;
+      padding:16px 24px 20px;
+    }
+    .setup-body p{ margin:0 0 12px; font-size:13px; line-height:1.6; color:#374151; }
+    .setup-hint{
+      background:#f0fdf4; border:1px solid #bbf7d0;
+      border-radius:10px; padding:10px 14px; margin-bottom:14px;
+      font-size:12px; color:#166534; line-height:1.6;
+    }
+    .setup-hint strong{ color:#15803d; }
+    .setup-step{
+      display:flex; gap:10px; align-items:flex-start;
+      margin-bottom:12px;
+    }
+    .setup-step-num{
+      flex-shrink:0;
+      width:24px; height:24px;
+      border-radius:50%;
+      background:#0f172a;
+      color:#fff;
+      font-size:11px; font-weight:800;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .setup-step-text{ font-size:12px; color:#374151; line-height:1.6; }
+    .setup-step-text code{
+      background:#f1f5f9; border:1px solid #e2e8f0;
+      border-radius:6px; padding:1px 5px;
+      font-family:ui-monospace,monospace; font-size:11px; color:#0f172a;
+    }
+    .setup-missing{
+      background:#fef2f2; border:1px solid #fecaca;
+      border-radius:10px; padding:10px 14px; margin-bottom:12px;
+    }
+    .setup-missing p{ margin:0 0 4px; font-size:12px; font-weight:700; color:#dc2626; }
+    .setup-missing ul{ margin:0; padding-left:16px; }
+    .setup-missing li{ font-size:12px; color:#991b1b; font-family:ui-monospace,monospace; line-height:1.8; }
+    .setup-btn-row{ display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-shrink:0; }
+    .setup-btn-ok{
+      background:#0f172a; color:#fff;
+      border:none; border-radius:12px;
+      padding:10px 22px; font-size:13px; font-weight:700;
+      cursor:pointer;
+    }
+    .setup-btn-settings{
+      background:#f3f4f6; color:#374151;
+      border:1px solid #e5e7eb; border-radius:12px;
+      padding:10px 18px; font-size:13px; font-weight:700;
+      cursor:pointer;
+    }
+    .api-link{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 12px;
+      background:#f8fafc; border:1px solid #e2e8f0;
+      border-radius:10px; text-decoration:none; color:inherit;
+      transition: background .15s, border-color .15s;
+    }
+    .api-link:hover{ background:#eff6ff; border-color:#93c5fd; }
+    .api-link-icon{ font-size:16px; flex-shrink:0; }
+    .api-link-note{
+      display:inline-block; font-size:10px; font-weight:600;
+      color:#6b7280; margin-left:5px;
+    }
+    .api-link-url{ font-size:11px; color:#2563eb; text-decoration:underline; }
+    .api-link-arrow{ margin-left:auto; color:#9ca3af; font-size:12px; flex-shrink:0; }
   </style>
 </head>
 
@@ -175,7 +430,10 @@
         <div class="title">Text-to-SQL Assistant Agent — Streaming</div>
         <div class="chip" id="statusChip">Idle</div>
       </div>
-      <div class="chip" id="traceChip">trace: -</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="chip" id="traceChip">trace: -</div>
+        <button id="settingsBtn" style="background:#f3f4f6;color:#374151;border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;">⚙️ Settings</button>
+      </div>
     </div>
 
     <div class="card">
@@ -188,20 +446,11 @@
           <div class="sub">Realtime pipeline steps in-chat 😄</div>
           <div style="display:flex; gap:10px; align-items:center;">
             <select id="providerSel" class="chip" style="padding:8px 10px;">
-              <!-- <option value="openai">openai</option> -->
-              <option value="openrouter">openrouter</option>
-              
-              <!-- <option value="gemini">gemini</option> -->
+              <option value="">Loading…</option>
             </select>
 
             <select id="modelSel" class="chip" style="padding:8px 10px; max-width:260px;">
-              <!-- <option value="openai/gpt-4o">gpt-4o</option> -->
-              <option value="openai/gpt-4o-mini">gpt-4o-mini</option>
-              <option value="openai/gpt-4.1-nano">gpt-4.1-nano</option>
-              <option value="openai/gpt-5-mini">gpt-5-mini</option>
-              <option value="openai/gpt-5.1-codex-mini">gpt-5.1-codex-mini</option>
-              <!-- <option value="anthropic/claude-3.5-sonnet">claude-3.5-sonnet</option> -->
-              <option value="google/gemini-2.5-flash">gemini-2.5-flash</option>
+              <option value="">Loading…</option>
             </select>
           </div>
 
@@ -211,9 +460,146 @@
       <div class="chatLog" id="chatLog"></div>
 
       <div class="bottom">
+        <!-- TODO: เปิดใช้งานเมื่อ tune ความรู้เสร็จแล้ว
+        <button id="exampleBtn">💡 คำถามตัวอย่าง</button>
+        -->
         <textarea id="prompt" placeholder="พิมพ์คำถาม เช่น 'ภัยพิบัติเกิดที่ไหนบ้าง'"></textarea>
         <button id="sendBtn">Send</button>
         <button id="clearBtn">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Example Questions Modal ── -->
+  <div class="eq-backdrop" id="eqModal">
+    <div class="eq-modal">
+      <div class="eq-header">
+        <h3>💡 คำถามตัวอย่าง</h3>
+        <button class="eq-close" id="eqClose">✕</button>
+      </div>
+      <div class="eq-list">
+        <div class="eq-section-label">ระดับง่าย</div>
+        <button class="eq-item">ขอดูรายชื่อหน่วยงานทั้งหมดที่บันทึกอยู่ในระบบหน่อย</button>
+        <button class="eq-item">ในปี 2024 มีการประกาศพื้นที่ภัยพิบัติไปกี่ครั้ง</button>
+        <button class="eq-item">ขอรายชื่อเกษตรกร 50 คนล่าสุดที่อยู่ในฐานข้อมูล</button>
+        <button class="eq-item">ในระบบนี้รองรับข้อมูลสัตว์ชนิดใดบ้าง</button>
+        <button class="eq-item">มีถุงยังชีพสัตว์รายการไหนบ้างที่พร้อมแจกจ่าย</button>
+        <div class="eq-section-label">ระดับปานกลาง</div>
+        <button class="eq-item">ประกาศเขตการช่วยเหลือแต่ละครั้ง เป็นการช่วยเหลือจากภัยพิบัติประเภทใดบ้าง</button>
+        <button class="eq-item">ดึงรายการคำขอ กษ.01 มาดูหน่อยว่าใครเป็นคนลงชื่อบันทึกข้อมูลในระบบ</button>
+        <button class="eq-item">สรุปข้อมูลการอพยพสัตว์: อพยพสัตว์ชนิดไหนไปที่จุดอพยพชื่อว่าอะไรบ้าง</button>
+        <button class="eq-item">หน่วยงานปศุสัตว์แต่ละแห่งรับผิดชอบครอบคลุมจังหวัดใดบ้าง</button>
+        <div class="eq-section-label">ระดับสูง</div>
+        <button class="eq-item">ตรวจสอบหน่อยว่ามีเกษตรกรคนไหนที่ยื่นคำขอ กษ.01 มาแล้ว แต่ในระบบยังไม่มีประวัติการเริ่มให้ความช่วยเหลือเบื้องต้น</button>
+        <button class="eq-item">ขอรายงานสรุป ศปส.2 ที่แสดงชื่อจังหวัด ยอดรวมสัตว์ที่ช่วยได้ และระบุรอบรายงานมาด้วย</button>
+        <button class="eq-item">เปรียบเทียบจำนวนสัตว์ที่เกษตรกรลงทะเบียนไว้ตอนแรก กับจำนวนที่เขาแจ้งความเสียหายเข้ามาในคำขอ กษ.02 ว่าต่างกันแค่ไหน</button>
+        <button class="eq-item">จุดอพยพไหนที่มีการอพยพสัตว์ไปรวมกันหนาแน่นที่สุด (มีรายการอพยพมากที่สุด)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings Modal ── -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2>⚙️ System Settings</h2>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px;">
+            🔒 Read-only — หากต้องการแก้ไข ให้เปลี่ยนค่าในไฟล์ <code style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 5px;font-size:11px;">.env</code> แล้วรัน <code style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 5px;font-size:11px;">docker compose up -d --build</code> ใหม่
+          </div>
+        </div>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body" id="settingsBody">
+        <div style="color:var(--muted);font-size:13px;">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Setup Warning Modal ── -->
+  <div class="setup-backdrop" id="setupModal">
+    <div class="setup-modal">
+      <div class="setup-header">
+        <div class="setup-icon">⚠️</div>
+        <h2>ยังไม่ได้ตั้งค่า API Key</h2>
+        <p>ระบบยังไม่สามารถใช้งานได้ เนื่องจากไม่พบ API Key ที่จำเป็น</p>
+      </div>
+      <div class="setup-body">
+        <div class="setup-missing" id="setupMissingList">
+          <!-- inject dynamically -->
+        </div>
+
+        <div class="setup-hint">
+          💡 <strong>ไม่จำเป็นต้องใส่ทุก Key</strong> — ใส่เฉพาะ provider ที่ต้องการใช้ก็พอ<br>
+          เช่น ถ้าใช้แค่ <strong>OpenRouter</strong> ก็ใส่แค่ <code>OPENROUTER_API_KEY</code> เพียงตัวเดียว
+        </div>
+
+        <p>กรุณาทำตามขั้นตอนต่อไปนี้เพื่อเปิดใช้งานระบบ:</p>
+
+        <div class="setup-step">
+          <div class="setup-step-num">1</div>
+          <div class="setup-step-text">
+            สมัครและรับ API Key จาก provider ที่ต้องการ (เลือกอย่างน้อย 1 ตัว):<br><br>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+              <a href="https://youtu.be/Cl4XKgz6EJQ" target="_blank" class="api-link">
+                <span class="api-link-icon">🟦</span>
+                <span>
+                  <strong>Google Gemini</strong>
+                  <span class="api-link-note">⚠️ ต้องเปิด Billing ก่อนจึงจะใช้งานได้</span><br>
+                  <span class="api-link-url">วิธีขอ Gemini API Key (YouTube)</span>
+                </span>
+                <span class="api-link-arrow">↗</span>
+              </a>
+              <a href="https://developer.puter.com/tutorials/how-to-get-openrouter-api-key/" target="_blank" class="api-link">
+                <span class="api-link-icon">🟪</span>
+                <span>
+                  <strong>OpenRouter</strong>
+                  <span class="api-link-note">✅ มี Free Tier ให้ใช้งานได้ทันที</span><br>
+                  <span class="api-link-url">วิธีขอ OpenRouter API Key</span>
+                </span>
+                <span class="api-link-arrow">↗</span>
+              </a>
+              <a href="https://youtu.be/J3y1dOpz9R4" target="_blank" class="api-link">
+                <span class="api-link-icon">🟩</span>
+                <span>
+                  <strong>OpenAI</strong>
+                  <span class="api-link-note">💳 ต้องเติมเครดิตก่อนใช้งาน</span><br>
+                  <span class="api-link-url">วิธีขอ OpenAI API Key (YouTube)</span>
+                </span>
+                <span class="api-link-arrow">↗</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="setup-step">
+          <div class="setup-step-num">2</div>
+          <div class="setup-step-text">
+            เปิดไฟล์ <code>.env</code> ที่อยู่ใน root ของโปรเจกต์<br>
+            <span style="color:#6b7280;">เช่น <code>text_to_sql/.env</code></span><br><br>
+            ใส่ค่า API Key ที่ได้มา เช่น:<br>
+            <code>GOOGLE_API_KEY=AIzaSy…</code><br>
+            <code>OPENROUTER_API_KEY=sk-or-…</code><br>
+            <code>OPENAI_API_KEY=sk-…</code>
+          </div>
+        </div>
+        <div class="setup-step">
+          <div class="setup-step-num">3</div>
+          <div class="setup-step-text">
+            บันทึกไฟล์ แล้ว Build และ Start ใหม่ด้วยคำสั่ง:<br>
+            <code>docker compose up -d --build</code>
+          </div>
+        </div>
+        <div class="setup-step">
+          <div class="setup-step-num">4</div>
+          <div class="setup-step-text">
+            รีเฟรชหน้าเว็บนี้อีกครั้งเพื่อเริ่มใช้งาน 🎉
+          </div>
+        </div>
+
+        <div class="setup-btn-row">
+          <button class="setup-btn-settings" id="setupOpenSettings">⚙️ ดู Settings</button>
+          <button class="setup-btn-ok" id="setupClose">รับทราบ</button>
+        </div>
       </div>
     </div>
   </div>
@@ -227,44 +613,265 @@ const traceChip = document.getElementById("traceChip");
 const providerSel = document.getElementById("providerSel");
 const modelSel = document.getElementById("modelSel");
 
-// แก้ list นี้ตามที่ backend รองรับจริง
-const MODELS = {
-  openai: ["gpt-4o", "gpt-4o-mini"],
-  openrouter: [
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4.1-nano",
-    "openai/gpt-5-mini",
-    "openai/gpt-5.1-codex-mini",
-    "anthropic/claude-3.5-sonnet",
-    "google/gemini-2.5-flash"
-  ],
-  gemini: ["gemini-1.5-pro", "gemini-1.5-flash"],
-};
+// โหลด providers/models ที่อนุญาตจาก backend (ตาม .env)
+let MODELS = {};
+let DEFAULTS_MAP = {};
 
-function fillModels(provider){
+function formatPrice(p) {
+  return p < 1 ? `$${p}` : `$${p.toFixed(2)}`;
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch("/config/models");
+    const data = await res.json();
+    MODELS = data.providers || {};
+    DEFAULTS_MAP = data.defaults || {};
+  } catch (e) {
+    console.error("Failed to load /config/models:", e);
+  }
+
+  // populate provider dropdown
+  providerSel.innerHTML = "";
+  const providers = Object.keys(MODELS);
+  if (providers.length === 0) {
+    providerSel.innerHTML = '<option value="">ไม่มี API key</option>';
+    modelSel.innerHTML = '<option value="">-</option>';
+    sendBtn.disabled = true;
+  }
+  // ตรวจสอบ config ทั้งหมดทุกครั้ง (แม้มี API key แล้ว)
+  await checkAndWarnConfig(providers.length === 0);
+
+  if (providers.length === 0) return;
+
+  providers.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    providerSel.appendChild(opt);
+  });
+
+  // select first provider and fill models
+  providerSel.value = providers[0];
+  fillModels(providers[0]);
+
+  // set default model if available
+  const defModel = DEFAULTS_MAP[providers[0]];
+  if (defModel && modelSel.querySelector(`option[value="${defModel}"]`)) {
+    modelSel.value = defModel;
+  }
+}
+
+function fillModels(provider) {
   modelSel.innerHTML = "";
   (MODELS[provider] || []).forEach(m => {
     const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = m;
+    opt.value = m.id;
+    // แสดง label + ราคา in/out ต่อ 1M tokens
+    opt.textContent = `${m.label}  (in ${formatPrice(m.price_in)} / out ${formatPrice(m.price_out)} /1M)`;
     modelSel.appendChild(opt);
   });
+  // set default model for this provider
+  const defModel = DEFAULTS_MAP[provider];
+  if (defModel && modelSel.querySelector(`option[value="${defModel}"]`)) {
+    modelSel.value = defModel;
+  }
 }
 
-// default (จะ override ได้ถ้านายอยากอ่านจาก env ผ่าน endpoint)
-// providerSel.value = "openai";
-// fillModels(providerSel.value);
-// modelSel.value = "gpt-4o-mini";
-
-
-  providerSel.value = "openrouter";
-  fillModels(providerSel.value);
-  modelSel.value = "openai/gpt-4o-mini";
+loadConfig();
 
 providerSel.addEventListener("change", () => {
   fillModels(providerSel.value);
 });
+
+// ── Example Questions Modal ──
+const eqModal   = document.getElementById("eqModal");
+const eqClose   = document.getElementById("eqClose");
+const exampleBtn = document.getElementById("exampleBtn");
+const promptTA  = document.getElementById("prompt");
+
+if (exampleBtn) {
+  exampleBtn.addEventListener("click", () => eqModal.classList.add("open"));
+}
+if (eqClose) {
+  eqClose.addEventListener("click", () => eqModal.classList.remove("open"));
+}
+if (eqModal) {
+  eqModal.addEventListener("click", e => { if (e.target === eqModal) eqModal.classList.remove("open"); });
+  eqModal.querySelectorAll(".eq-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      promptTA.value = btn.textContent.trim();
+      promptTA.focus();
+      eqModal.classList.remove("open");
+    });
+  });
+}
+
+// ── Settings Modal ──
+const settingsBtn   = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const modalClose    = document.getElementById("modalClose");
+const settingsBody  = document.getElementById("settingsBody");
+
+settingsBtn.addEventListener("click", openSettings);
+modalClose.addEventListener("click", () => settingsModal.classList.remove("open"));
+settingsModal.addEventListener("click", e => { if (e.target === settingsModal) settingsModal.classList.remove("open"); });
+
+// ── Setup Warning Modal ──
+const setupModal        = document.getElementById("setupModal");
+const setupClose        = document.getElementById("setupClose");
+const setupOpenSettings = document.getElementById("setupOpenSettings");
+const setupMissingList  = document.getElementById("setupMissingList");
+
+setupClose.addEventListener("click", () => setupModal.classList.remove("open"));
+setupOpenSettings.addEventListener("click", () => {
+  setupModal.classList.remove("open");
+  openSettings();
+});
+
+async function checkAndWarnConfig(noApiKey) {
+  let data = null;
+  try {
+    const res = await fetch("/config/settings");
+    data = await res.json();
+  } catch(e) { /* network error */ }
+
+  // ── ตรวจ API Keys ──
+  const missingApiKeys = data
+    ? Object.entries(data.api_keys).filter(([,v]) => v.startsWith("❌")).map(([k]) => k)
+    : ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_API_KEY"];
+
+  // ── ตรวจ DB ──
+  const dbRequired = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"];
+  const missingDb = data
+    ? dbRequired.filter(k => {
+        const v = data.db[k] || "";
+        return !v || v === "-" || v.startsWith("❌");
+      })
+    : [];
+
+  const hasMissingOther = missingDb.length > 0;
+  const allApiKeysMissing = noApiKey;
+
+  // ไม่มีอะไรขาดเลย → ไม่ต้อง popup
+  if (!allApiKeysMissing && !hasMissingOther) return;
+
+  // สร้างเนื้อหา popup
+  let html = "";
+
+  if (allApiKeysMissing) {
+    html += `
+      <div class="setup-missing">
+        <p>🔑 ยังไม่มี API Key — กรุณาตั้งค่าอย่างน้อย 1 ตัว:</p>
+        <ul>${missingApiKeys.map(k => `<li>${k}</li>`).join("")}</ul>
+      </div>`;
+  } else {
+    html += `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#166534;">
+        ✅ มี API Key แล้ว (${Object.keys(data.providers || {}).join(", ") || "—"})
+      </div>`;
+  }
+
+  if (hasMissingOther) {
+    html += `
+      <div class="setup-missing">
+        <p>⚠️ ตัวแปรที่ยังไม่ได้ตั้งค่า:</p>
+        <ul>${missingDb.map(k => `<li>${k}</li>`).join("")}</ul>
+        <div style="margin-top:6px;font-size:11px;color:#b45309;">
+          หากไม่ตั้งค่า DB ระบบอาจไม่สามารถ Query ข้อมูลได้
+        </div>
+      </div>`;
+  }
+
+  setupMissingList.innerHTML = html;
+  setupModal.classList.add("open");
+}
+
+async function openSettings() {
+  settingsModal.classList.add("open");
+  settingsBody.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading…</div>';
+  try {
+    const res  = await fetch("/config/settings");
+    const data = await res.json();
+    settingsBody.innerHTML = renderSettings(data);
+  } catch(e) {
+    settingsBody.innerHTML = `<div style="color:#dc2626">Error loading settings: ${e}</div>`;
+  }
+}
+
+function settingsRow(key, val, isDefault) {
+  const badge = isDefault ? ` <span class="badge-default">default</span>` : "";
+  const cls   = val.startsWith("❌") ? "badge-err" : val.startsWith("✅") ? "badge-ok" : "";
+  return `<tr><td>${key}</td><td class="mono ${cls}">${val}${badge}</td></tr>`;
+}
+
+function renderSettings(data) {
+  // 1) API Keys
+  let html = `<div class="settings-section">
+    <h3>🔑 API Keys</h3>
+    <table class="settings-table">
+      <thead><tr><th>Key</th><th>Status</th></tr></thead><tbody>`;
+  for (const [k, v] of Object.entries(data.api_keys)) {
+    const cls = v.startsWith("❌") ? "badge-err" : "badge-ok";
+    html += `<tr><td>${k}</td><td class="mono ${cls}">${v}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  // 2) Database
+  html += `<div class="settings-section">
+    <h3>🗄️ Database</h3>
+    <table class="settings-table">
+      <thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>`;
+  for (const [k, v] of Object.entries(data.db)) {
+    const cls = k === "DB_PASSWORD" && v.startsWith("❌") ? "badge-err" : "";
+    html += `<tr><td>${k}</td><td class="mono ${cls}">${v}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  // 3) Safety
+  html += `<div class="settings-section">
+    <h3>🛡️ Safety &amp; Limits</h3>
+    <table class="settings-table">
+      <thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>`;
+  for (const [k, v] of Object.entries(data.safety)) {
+    html += `<tr><td>${k}</td><td class="mono">${v}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  // 4) Model Catalog per provider
+  // หา provider ที่มี API key จริง (active providers)
+  const activeProviders = new Set(Array.isArray(data.providers) ? data.providers : Object.keys(data.providers || {}));
+  console.log("[Settings] activeProviders:", [...activeProviders]);
+  console.log("[Settings] model_catalog keys:", Object.keys(data.model_catalog || {}));
+
+  for (const [provider, models] of Object.entries(data.model_catalog)) {
+    const defModel   = data.defaults[provider] || "";
+    const isActive   = activeProviders.has(provider);
+    const dimStyle   = !isActive ? "opacity:0.35;filter:grayscale(1);" : "";
+    const lockedBadge = !isActive
+      ? `<span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:1px 8px;font-size:11px;color:#9ca3af;font-weight:600;margin-left:6px;">🔒 ไม่มี API Key</span>`
+      : `<span style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:999px;padding:1px 8px;font-size:11px;color:#16a34a;font-weight:600;margin-left:6px;">✅ พร้อมใช้</span>`;
+
+    html += `<div class="settings-section" style="${dimStyle}">
+      <h3>🤖 Models — ${provider} ${lockedBadge}</h3>
+      <table class="settings-table" style="${!isActive ? 'background:#f8f9fa;' : ''}">
+        <thead><tr><th>Model ID</th><th>Label</th><th>In ($/1M)</th><th>Out ($/1M)</th></tr></thead><tbody>`;
+    for (const m of models) {
+      const isDefault = m.id === defModel;
+      const badge = isDefault ? ` <span class="badge-default">default</span>` : "";
+      const rowStyle = !isActive ? "color:#9ca3af;" : "";
+      html += `<tr style="${rowStyle}">
+        <td class="mono">${m.id}${badge}</td>
+        <td>${m.label}</td>
+        <td class="mono">$${m.price_in}</td>
+        <td class="mono">$${m.price_out}</td>
+      </tr>`;
+    }
+    html += `</tbody></table></div>`;
+  }
+
+  return html;
+}
 
 function getConversationId() {
   let cid = localStorage.getItem("conversation_id");
@@ -293,9 +900,12 @@ function newChat() {
 
   renderChatId();
 
-  providerSel.value = "openrouter";
-  fillModels(providerSel.value);
-  modelSel.value = "openai/gpt-4o-mini";
+  // reset provider/model to first available from loaded config
+  const providers = Object.keys(MODELS);
+  if (providers.length > 0) {
+    providerSel.value = providers[0];
+    fillModels(providers[0]);
+  }
 }
 
 const chatIdLabel = document.getElementById("chatIdLabel");
@@ -329,7 +939,12 @@ function appendLine(el, line){
   debugLog.push(line);
   const p = el.querySelector(".progress");
   if(!p) return;
-  p.innerHTML = `<div>${esc(line)}</div>`;
+  // Animate trailing ellipsis (… or ...)
+  const animDots = `<span class="dots-anim"><span>.</span><span>.</span><span>.</span></span>`;
+  const display = esc(line)
+    .replace(/…$/, animDots)
+    .replace(/\.\.\.+$/, animDots);
+  p.innerHTML = `<div>${display}</div>`;
 }
 
 

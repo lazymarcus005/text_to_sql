@@ -4,6 +4,7 @@ from pathlib import Path
 
 from typing import Dict, Any, Optional, List
 import os, json
+import concurrent.futures
 
 from langchain_core.runnables import Runnable
 from langchain_core.prompts import ChatPromptTemplate
@@ -14,6 +15,10 @@ from agentic_ai_system.validators.sql_hygiene import extract_json_like, normaliz
 from agentic_ai_system.utils.prompt_safety import escape_curly_braces, assert_prompt_vars
 # from agentic_ai_system.agents.text_to_sql.schema_retriever import PostgresSchemaRetriever
 from agentic_ai_system.agents.text_to_sql.schema_retriever import MariaDBSchemaRetriever
+
+# Shared thread pool — used to enforce hard timeout on LLM calls.
+# This bypasses gRPC/SDK internal retry loops that ignore Python-level timeout settings.
+_LLM_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="llm_invoke")
 
 
 class TextToSQLAgent(Runnable):
@@ -235,7 +240,49 @@ class TextToSQLAgent(Runnable):
             # Include repair_note (execution feedback or last validation repair) if present
             msg = base_prompt if not repair_note else (base_prompt + "\n\n" + repair_note)
 
-            resp = chain.invoke({"q": msg})
+            # Hard timeout via thread — prevents gRPC/SDK internal retry loops
+            # from hanging indefinitely when API key is invalid or network is down.
+            llm_timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "30"))
+            try:
+                future = _LLM_THREAD_POOL.submit(chain.invoke, {"q": msg})
+                resp = future.result(timeout=llm_timeout_sec)
+            except concurrent.futures.TimeoutError:
+                llm_err_msg = f"LLM call timed out after {llm_timeout_sec}s — check API Key and network connectivity"
+                return {
+                    "agent_name": self.agent_name,
+                    "agent_version": self.agent_version,
+                    "status": "fail",
+                    "error": {
+                        "error_code": "LLM_TIMEOUT",
+                        "message": llm_err_msg,
+                        "retryable": False,
+                    },
+                }
+            except Exception as llm_exc:
+                llm_err_msg = str(llm_exc)
+                llm_err_lower = llm_err_msg.lower()
+                non_retryable_llm = any(k in llm_err_lower for k in [
+                    "illegal header value",
+                    "invalid metadata",
+                    "unauthenticated",
+                    "api key",
+                    "permission denied",
+                    "authentication",
+                    "unauthorized",
+                    "invalid api key",
+                    "quota exceeded",
+                    "billing",
+                ])
+                return {
+                    "agent_name": self.agent_name,
+                    "agent_version": self.agent_version,
+                    "status": "fail",
+                    "error": {
+                        "error_code": "LLM_API_ERROR",
+                        "message": f"LLM call failed: {_trim(llm_err_msg, 400)}",
+                        "retryable": not non_retryable_llm,
+                    },
+                }
             raw = getattr(resp, "content", "") or ""
 
             try:

@@ -4,6 +4,11 @@ services:
     container_name: agentic_api
     env_file:
       - .env
+    environment:
+      # Suppress low-level gRPC credential/retry noise in logs.
+      # Background gRPC threads may briefly log after Python timeout — this silences them.
+      GRPC_VERBOSITY: "NONE"
+      GRPC_TRACE: ""
     ports:
       - "8000:8000"
     depends_on:

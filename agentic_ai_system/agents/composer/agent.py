@@ -66,10 +66,6 @@ def _format_history_for_payload(history: Any, max_items: int = 10) -> List[dict]
 
 class ComposerAgent(Runnable):
     agent_name = "composer"
-    agent_version = "1.0.2"  # bump version since behavior changed again
-
-class ComposerAgent(Runnable):
-    agent_name = "composer"
     agent_version = "1.0.3"  # bump
 
     def __init__(self, provider: str | None = None, model: str | None = None, temperature: float | None = None):
