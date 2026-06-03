@@ -11,9 +11,9 @@ services:
       GRPC_TRACE: ""
     ports:
       - "8200:8000"
-    depends_on:
-      db:
-        condition: service_healthy
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
 
 #   db:
 #     image: mariadb:11
